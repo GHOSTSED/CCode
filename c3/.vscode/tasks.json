@@ -1,0 +1,30 @@
+{
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "makeit",
+            "command": "C:\\mingw64\\bin\\gcc.exe",
+            "args": [
+                "-Wall",
+                "-g",
+                "${file}",
+                "${workspaceFolder}\\src\\queue.c",
+                "${workspaceFolder}\\src\\hashTable.c",
+                "${workspaceFolder}\\src\\list.c",
+                "-o",
+                "${workspaceFolder}\\exe\\${fileBasenameNoExtension}.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ],
+    "version": "2.0.0"
+}
