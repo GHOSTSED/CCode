@@ -209,7 +209,7 @@ static void remove_node_from_list(list *pList, listNode *pNode)
 	nextNode->pre = preNode;
 }
 
-int delete_node_by_data(list *pList, void *data, fp_compare cmp)
+int delete_node_by_data(list *pList, const void *data, fp_compare cmp)
 {
 	if (NULL == cmp || NULL == pList)
 	{
@@ -223,15 +223,18 @@ int delete_node_by_data(list *pList, void *data, fp_compare cmp)
 		return NODE_NOT_EXIST;
 	}
 
+	int count = 0;
+
 	do
 	{
+		++count;
 		tmp = pRemoveNode->next;
 		delete_node_from_list(pList, pRemoveNode);
 		pRemoveNode = tmp;
 		pRemoveNode = get_node_by_data_from(pRemoveNode, data, cmp);
 	} while (pRemoveNode != NULL && pRemoveNode != pList->last);
 
-	return SUCCESS;
+	return count;
 }
 
 int delete_node_by_index(list *pList, int index)
@@ -396,7 +399,7 @@ listNode *get_node_by_data(list *pList, const void *data, fp_compare cmp)
 }
 
 //从pFromNode开始，查询数据域与data相等的节点
-listNode *get_node_by_data_from(listNode *pFromNode, void *data, fp_compare cmp)
+listNode *get_node_by_data_from(listNode *pFromNode, const void *data, fp_compare cmp)
 {
 	if (NULL == cmp)
 	{
@@ -771,10 +774,11 @@ int get_data_count(list *pList)
 	listNode *pTravelNode = pList->first->next;
 	int count = 0;
 
+
 	while (pTravelNode != pList->last)
 	{
 		count++;
+		pTravelNode = pTravelNode->next;
 	}
 	return count;
-
 }

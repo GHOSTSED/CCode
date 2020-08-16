@@ -55,6 +55,7 @@ hashTable *init_hashTable(size_t tableSize, fp_hash_func hashFunc)
         pHashTable->listArray[i] = NULL;
     }
     pHashTable->hashIt = hashFunc;
+    pHashTable->count = 0;
 
     return pHashTable;
 }
@@ -171,6 +172,11 @@ int insert_data_to_hashTable(hashTable *pHashTable, const void *key, size_t keyS
 */
 void *query_hashTable_by_key(hashTable *pHashTable, const void *key, size_t keySize, fp_compare cmp)
 {
+    if(NULL == pHashTable || NULL == key || 0 == keySize || NULL == cmp)
+    {
+        return NULL;
+    }
+
     unsigned int hash = hash_function(pHashTable, key, keySize);
     unsigned int index = hash % (pHashTable->tableSize);
 
@@ -180,28 +186,41 @@ void *query_hashTable_by_key(hashTable *pHashTable, const void *key, size_t keyS
 }
 
 /*
-*@fn				int hashTable_delete_node_by_key(hashTable *pHashTable,const void *key, size_t keySize, void *data, fp_compare cmp)
+*@fn				int delete_node_from_hashTable(hashTable *pHashTable,const void *key, size_t keySize, void *data, fp_compare cmp)
 *@brief   			用于在hash表中根据key对指定数据进行删除
 *@details			
 *
 *@param[in] hashTable* pHashTable		    要进行查询操作的哈希表		
 *@param[in] const void* key                 hash操作所依赖的key
 *@param[in] size_t keySize                  key的大小（单位：字节）
-*@param[in] void* data                      用于进行比较的数据
+*@param[in] void* data                      用于进行比较的数据，若传入NULL，则根据key和cmp进行删除操作；若传入非NULL的值，将根据key进行映射，在对应的链表中根据data和cmp进行删除操作
 *@param[in] fp_compare cmp                  用于进行比较的函数
 *
-*@return			执行情况，分为两种：NODE_NOT_EXIST--->要删除的节点不存在；SUCCESS：删除成功
+*@return			执行情况，分为三种：NODE_NOT_EXIST--->要删除的节点不存在；SUCCESS：删除成功；NULL_POINTER：传入了空指针或非法值
 *@retval			
 */
-int hashTable_delete_node_by_key(hashTable *pHashTable,const void *key, size_t keySize, void *data, fp_compare cmp)
+int delete_node_from_hashTable(hashTable *pHashTable, const void *key, size_t keySize, const void *data, fp_compare cmp)
 {
+    if(NULL == pHashTable || NULL == key || 0 == keySize)
+    {
+        return NULL_POINTER;
+    }
+
     unsigned int hash = hash_function(pHashTable, key, keySize);
     unsigned int index = hash % (pHashTable->tableSize);
-
-    int res = delete_node_by_data(pHashTable->listArray[index], data, cmp);
-    if(SUCCESS == res)
+    int res = 0;
+    if(NULL == data)
     {
-        pHashTable->count--;
+        res = delete_node_by_data(pHashTable->listArray[index], key, cmp);
+    }
+    else
+    {
+        res = delete_node_by_data(pHashTable->listArray[index], data, cmp);
+    }
+    
+    if(res > 0)
+    {
+        (pHashTable->count) -= res;
     }
     return res;
 }
@@ -219,10 +238,24 @@ int hashTable_delete_node_by_key(hashTable *pHashTable,const void *key, size_t k
 */
 void print_hashTable(hashTable *pHashTable, fp_print printData)
 {
+    if(NULL == pHashTable || NULL == printData)
+    {
+        return;
+    }
     int i = 0;
     for(i = 0; i < pHashTable->tableSize; i++)
     {
         printf("*************************HashTable[%d]***************************\n", i);
         printList(pHashTable->listArray[i], printData);
     }
+}
+
+int get_count_of_hashTable(const hashTable *pHashTable)
+{
+    if(NULL == pHashTable)
+    {
+        return 0;
+    }
+
+    return pHashTable->count;
 }

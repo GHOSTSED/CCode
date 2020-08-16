@@ -85,7 +85,7 @@ int insert_data_to_hashTable(hashTable *pHashTable, const void *key, size_t keyS
 void *query_hashTable_by_key(hashTable *pHashTable, const void *key, size_t keySize, fp_compare cmp);
 
 /*
-*@fn				int hashTable_delete_node_by_key(hashTable *pHashTable,const void *key, size_t keySize, void *data, fp_compare cmp)
+*@fn				int delete_node_from_hashTable(hashTable *pHashTable,const void *key, size_t keySize, void *data, fp_compare cmp)
 *@brief   			用于在hash表中根据key对指定数据进行删除
 *@details			
 *
@@ -98,7 +98,7 @@ void *query_hashTable_by_key(hashTable *pHashTable, const void *key, size_t keyS
 *@return			执行情况，分为两种：NODE_NOT_EXIST--->要删除的节点不存在；SUCCESS：删除成功
 *@retval			
 */
-int hashTable_delete_node_by_key(hashTable *pHashTable,const void *key, size_t keySize, void *data, fp_compare cmp);
+int delete_node_from_hashTable(hashTable *pHashTable, const void *key, size_t keySize, const void *data, fp_compare cmp);
 
 /*
 *@fn				void print_hashTable(hashTable *pHashTable, fp_print printData)
@@ -112,6 +112,8 @@ int hashTable_delete_node_by_key(hashTable *pHashTable,const void *key, size_t k
 *@retval			
 */
 void print_hashTable(hashTable *pHashTable, fp_print printData);
+
+int get_count_of_hashTable(const hashTable *pHashTable);
 
 #endif
 

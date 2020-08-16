@@ -96,6 +96,10 @@ void *get_queue_head_data(queue *pQueue)
 */
 int enqueue(queue *pQueue, void *data)
 {
+    if(NULL == pQueue || NULL == data)
+    {
+        return NULL_POINTER;
+    }
     int res = appened_node_from_data(pQueue->queueList, data);
     return res;
 }
@@ -112,6 +116,10 @@ int enqueue(queue *pQueue, void *data)
 */
 int dequeue(queue *pQueue)
 {
+    if(NULL == pQueue)
+    {
+        return NULL_POINTER;
+    }
     int res = delete_node_by_index(pQueue->queueList, 1);
     return res;
 }
@@ -130,7 +138,7 @@ int get_queue_count(queue *pQueue)
 {
     if(NULL == pQueue)
     {
-        return NULL_POINTER;
+        return 0;
     }
     return (get_data_count(pQueue->queueList));
 }

@@ -2,17 +2,17 @@
     "tasks": [
         {
             "type": "shell",
-            "label": "makeit",
-            "command": "C:\\mingw64\\bin\\gcc.exe",
+            "label": "C/C++: gcc build active file",
+            "command": "/usr/bin/gcc",
             "args": [
-                "-Wall",
                 "-g",
                 "${file}",
-                "${workspaceFolder}\\src\\queue.c",
-                "${workspaceFolder}\\src\\hashTable.c",
-                "${workspaceFolder}\\src\\list.c",
+                "${workspaceFolder}/src/list.c",
+                "${workspaceFolder}/src/hashTable.c",
+                "${workspaceFolder}/src/queue.c",
                 "-o",
-                "${workspaceFolder}\\exe\\${fileBasenameNoExtension}.exe"
+                "${workspaceFolder}/exe/${fileBasenameNoExtension}",
+                "-lcunit"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

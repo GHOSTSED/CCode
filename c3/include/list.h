@@ -167,7 +167,7 @@ int delete_node_by_index(list *pSrcList, int index);
 *@return			执行情况，分为两种：NODE_NOT_EXIST--->要删除的节点不存在；SUCCESS：删除成功
 *@retval			
 */
-int delete_node_by_data(list *pSrcList, void *data, fp_compare cmp);
+int delete_node_by_data(list *pSrcList, const void *data, fp_compare cmp);
 
 /*
 *@fn				void insert_sort(list *pDstList, fp_compare cmp, int flag);
@@ -252,7 +252,7 @@ int delete_node_from_list(list *pList, listNode *pNode);
 int insert_node_behind_by_ptr(list *pDstList, listNode *pFrontNode, listNode *pInsertNode);
 
 /*
-*@fn				listNode *get_node_by_data_from(listNode *pFromNode, void *data, fp_compare cmp);
+*@fn				listNode *get_node_by_data_from(listNode *pFromNode, const void *data, fp_compare cmp);
 *@brief   			用于查询从pFromNode开始、数据与data相同的第一个节点
 *@details			
 *
@@ -263,7 +263,7 @@ int insert_node_behind_by_ptr(list *pDstList, listNode *pFrontNode, listNode *pI
 *@return			N/A
 *@retval			
 */
-listNode *get_node_by_data_from(listNode *pFromNode, void *data, fp_compare cmp);
+listNode *get_node_by_data_from(listNode *pFromNode, const void *data, fp_compare cmp);
 
 /*
 *@fn				void lockList(list *pList, fp_lock_list lock);
