@@ -5,11 +5,11 @@
 /*************************************************************************************************************************************/
 struct hashTable
 {
-    size_t tableSize;
-    list **listArray;
-    int count;
+    size_t tableSize;//桶的个数
+    list **listArray;//桶数组
+    int count;//内部容纳的数据节点数量
 
-    fp_hash_func hashIt;
+    fp_hash_func hashIt;//用户传入的hash函数
 };
 
 
@@ -101,7 +101,7 @@ static unsigned int hash_function(hashTable *pHashTable, const void *key, size_t
 {
     unsigned int hash = 0;
 
-    if(NULL == pHashTable->hashIt)
+    if(NULL == pHashTable->hashIt)//缺省情况
     {
         unsigned char *pData = (unsigned char *)key;
 
@@ -111,7 +111,7 @@ static unsigned int hash_function(hashTable *pHashTable, const void *key, size_t
             hash = 31 * hash + (unsigned int)(pData[i]);
         }
     }
-    else
+    else//用户传入了自定义哈希函数的情况
     {
         hash = pHashTable->hashIt(key, keySize);
     }
