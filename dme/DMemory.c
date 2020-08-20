@@ -1,60 +1,319 @@
+/*************************************************************************************************************************************/
+/*												  INCLUDE_FILES																		 */
+/*************************************************************************************************************************************/
 #include "DMemory.h"
 
-
-struct _Header{
-    struct _Header *pre;
-    struct _Header *next;
-    unsigned char available;
-    unsigned int size;
-};
-
-struct _HList{
-    Header *first;
-    Header *last;
-};
-
-struct _Block{
-    void *block;
-
-    struct _Block *pre;
-    struct _Block *next;
-};
-
-struct _BlockList{
-    HList *allocList;
-    HList *spareList;
-
-    Block *first;
-    Block *last;
-};
-
+/*************************************************************************************************************************************/
+/*												   TYPES																		 */
+/*************************************************************************************************************************************/
 typedef struct _Header Header;
 typedef struct _HList HList;
 typedef struct _Block Block;
 typedef struct _BlockList BlockList;
 
-static BlockList *pBlockList = NULL;
+/* 用于存储小内存块信息的头部 */
+struct _Header{
+    struct _Header *pre;/* 指向链表中的前驱节点 */
+    struct _Header *next;/* 指向链表中的后继节点 */
+    unsigned char available;/* 用来标志该块是空闲块还是占用块的标志位 */
+    unsigned int size;/* 用于记录该内存块大小 */
+};
 
+/* 用于在头部之间建立联系的链表 */
+struct _HList{
+    Header *first;/* 附加头节点，指向链表的头部 */
+    Header *last;/* 附加尾节点，指向链表的尾部 */
+};
+
+/* 进行数据分配使用的大内存块（64KB） */
+struct _Block{
+    void *block;/* 指向一个大的内存块，大小为64KB */
+
+    struct _Block *pre;/* 大内存块的前向指针 */
+    struct _Block *next;/* 大内存块的后向指针 */
+};
+
+/* 用于管理大内存块的链表 */
+struct _BlockList{
+    HList *allocList;/* 已分配的所有小内存块组成的链表 */
+    HList *spareList;/* 当前空闲的所有小内存块组成的链表 */
+
+    Block *first;/* 指向首个大内存块 */
+    Block *last;/* 指向最后一个大内存块 */
+};
+
+
+/*************************************************************************************************************************************/
+/*												   VARIABLES																		 */
+/*************************************************************************************************************************************/
+static BlockList *pBlockList = NULL;/* 静态全局变量，大内存块链表，内存获取来源 */
+
+/*************************************************************************************************************************************/
+/*												   FUNCTIONS																		 */
+/*************************************************************************************************************************************/
+/*
+*@fn							static HList *dmemory_HList_init();
+*@brief   						用于初始化Header链表，为dmemory_init的组成部分
+*@details	
+*
+*@param[in]                     N/A
+*
+*@return						若创建链表成功，返回链表指针，否则返回NULL；
+*@retval
+*/
 static HList *dmemory_HList_init();
+
+/*
+*@fn							static void dmemory_HList_delete(HList *pHList);
+*@brief   						用于销毁Header链表，为dmemory_delete的组成部分
+*@details	
+*
+*@param[in] HList* pHList       指向要销毁的链表的指针
+*
+*@return						N/A
+*@retval
+*/
 static void dmemory_HList_delete(HList *pHList);
+
+/*
+*@fn							static Block *dmemory_Block_init();
+*@brief   						用于初始化一个大的内存块用于分配
+*@details	
+*
+*@param[in]                     N/A
+*
+*@return						若内存块申请成功，返回指向内存块的指针，否则返回NULL
+*@retval
+*/
 static Block *dmemory_Block_init();
+
+/*
+*@fn							static void dmemory_Block_delete(Block *ptrBlock);
+*@brief   						用于销毁大内存块
+*@details	
+*
+*@param[in] Block* ptrBlock     要销毁的大内存块
+*
+*@return						N/A
+*@retval
+*/
 static void dmemory_Block_delete(Block *ptrBlock);
-static void dmemory_insert_to_spare(Header *pInsertHeader);
-int dmemory_init();
+
+/*
+*@fn							static void *dmemory_get_memAddr_by_header(Header *pHeader);
+*@brief   						用于根据Header获取其对应的内存块的首地址
+*@details	
+*
+*@param[in] Header* pHeader     要获取的内存块对应的Header指针
+*
+*@return						N/A
+*@retval
+*/
 static void *dmemory_get_memAddr_by_header(Header *pHeader);
+
+/*
+*@fn							static void dmemory_move_to_alloc(Header *pHeader);
+*@brief   						用于将Header由空闲链表移动到已分配链表中
+*@details	
+*
+*@param[in] Header* pHeader     要进行移动的头部
+*
+*@return						N/A
+*@retval
+*/
 static void dmemory_move_to_alloc(Header *pHeader);
+
+/*
+*@fn							static void dmemory_move_to_spare(Header *pDataHeader);
+*@brief   						用于将Header由已分配链表转移到空闲链表中
+*@details	
+*
+*@param[in] Header* pHeader     要进行移动的头部
+*
+*@return						N/A
+*@retval
+*/
 static void dmemory_move_to_spare(Header *pDataHeader);
+
+/*
+*@fn							static void dmemory_insert_to_alloc(Header *pHeader);
+*@brief   						用于将Header插入到已分配链表中
+*@details	
+*
+*@param[in] Header* pHeader     要进行插入的头部
+*
+*@return						N/A
+*@retval
+*/
 static void dmemory_insert_to_alloc(Header *pHeader);
+
+/*
+*@fn							static void dmemory_insert_to_spare(Header *pInsertHeader);
+*@brief   						用于将Header插入空闲内存块（spareList）中
+*@details	
+*
+*@param[in] Header* pInsertHeader     要进行插入的Header
+*
+*@return						N/A
+*@retval
+*/
+static void dmemory_insert_to_spare(Header *pInsertHeader);
+
+/*
+*@fn							        static void *dmemory_BestFit_search_spare(unsigned int dataSize);
+*@brief   						        用于在空闲内存块链表依照Best-fit算法寻找最合适的内存块用于分配
+*@details	
+*
+*@param[in] unsigned int dataSize       要申请的内存大小（单位：字节）
+*
+*@return						        申请到的内存的首地址
+*@retval
+*/
 static void *dmemory_BestFit_search_spare(unsigned int dataSize);
+
+/*
+*@fn							        static Header *dmemory_get_next_header(Header *pHeader);
+*@brief   						        获取地址上相邻的下一个头部
+*@details	
+*
+*@param[in] Header* pHeader             要获取下一个头部的头部
+*
+*@return						        地址上与该头部相邻的下一个头部
+*@retval
+*/
 static Header *dmemory_get_next_header(Header *pHeader);
+
+/*
+*@fn							        static void dmemory_remove_from_spare(Header *pHeader);
+*@brief   						        将头部从空闲链表中移除
+*@details	
+*
+*@param[in] Header* pHeader             要移除的头部指针
+*
+*@return						        N/A
+*@retval
+*/
 static void dmemory_remove_from_spare(Header *pHeader);
+
+/*
+*@fn							        static int dmemory_is_header_in_alloc(Header *pHeader)；
+*@brief   						        判断头部是否存在于已分配链表中
+*@details	
+*
+*@param[in] Header* pHeader             要进行查询的头部指针
+*
+*@return						        若该头部不存在于已分配链表中，返回NOT_EXIST(-3)；否则，返回EXIST(2)
+*@retval
+*/
+static int dmemory_is_header_in_alloc(Header *pHeader);
+
+/*
+*@fn							int dmemory_init();
+*@brief   						用于初始化内存块链表
+*@details	
+*
+*@param[in]                     N/A
+*
+*@return						初始化情况，共分2种：MALLOC_FAILED(-1)：内存分配过程中发生错误；INIT_SUCCESS(1)：初始化成功
+*@retval
+*/
+int dmemory_init();
+
+/*
+*@fn							void dmemory_merge_spare_space();
+*@brief   						用于对内存块中的空闲区域进行合并，可以由用户显式调用，内部每隔一段时间也会调用此函数
+*@details	
+*
+*@param[in]                     N/A
+*
+*@return						N/A
+*@retval
+*/
 void dmemory_merge_spare_space();
+
+/*
+*@fn							void dmemory_printAllocInfo();
+*@brief   						用于打印已分配块的情况，打印出的数字代表空闲的内存块大小
+*@details	
+*
+*@param[in]                     N/A
+*
+*@return						N/A
+*@retval
+*/
 void dmemory_printAllocInfo();
+
+/*
+*@fn							void dmemory_printSpareInfo();
+*@brief   						用于打印空闲内存块的情况，打印出的数字代表空闲的内存块大小
+*@details	
+*
+*@param[in]                     N/A
+*
+*@return						N/A
+*@retval
+*/
 void dmemory_printSpareInfo();
+
+/*
+*@fn							void dmemory_delete();
+*@brief   						用于销毁内存池
+*@details	
+*
+*@param[in]                     N/A
+*
+*@return						N/A
+*@retval
+*/
 void dmemory_delete();
+
+/*
+*@fn							    void *dmemory_malloc(unsigned int dataSize);
+*@brief   						    用于进行内存申请的接口
+*@details	
+*
+*@param[in] unsigned int dataSize   申请的字节数                     
+*
+*@return						    若成功申请，返回指向申请到的内存块的指针；否则返回NULL
+*@retval
+*/
 void *dmemory_malloc(unsigned int dataSize);
+
+/*
+*@fn							    void *dmemory_calloc(unsigned int dataSize);
+*@brief   						    用于进行内存申请的接口，会将申请到的内存空间用0填充
+*@details	
+*
+*@param[in] unsigned int dataSize   申请的字节数                     
+*
+*@return						    若成功申请，返回指向申请到的内存块的指针；否则返回NULL
+*@retval
+*/
 void dmemory_free(void *pData);
+
+/*
+*@fn							    void *dmemory_realloc(void *srcPtr, unsigned int dataSize);
+*@brief   						    用于进行内存重新申请大小的接口
+*@details	
+*
+*@param[in] void *srcPtr            指向原内存空间的指针
+*@param[in] unsigned int dataSize   重新申请的字节数                     
+*
+*@return						    若成功申请，返回指向申请到的内存块的指针；否则返回NULL
+*@retval
+*/
 void *dmemory_calloc(unsigned int dataSize);
+
+/*
+*@fn							    void dmemory_free(void *pData);
+*@brief   						    用于进行内存空间释放的接口
+*@details	
+*
+*@param[in] void* pData             指向要释放的空间的指针                  
+*
+*@return						    N/A
+*@retval
+*/
 void *dmemory_realloc(void *srcPtr, unsigned int dataSize);
 
 
@@ -84,6 +343,7 @@ static HList *dmemory_HList_init()
         return NULL;
     }
 
+    /* 初始化一个只有附加头节点和附件尾节点的空链表 */
     first->size = 0;
     first->next = last;
     first->pre = NULL;
@@ -104,7 +364,7 @@ static void dmemory_HList_delete(HList *pHList)
     {
         return ;
     }
-
+    /* 只用释放头尾节点，中间的头部是Block的一部分，由Block进行free */
     free(pHList->first);
     free(pHList->last);
     free(pHList);
@@ -118,6 +378,7 @@ static Block *dmemory_Block_init()
         return NULL;
     }
 
+    /* 申请的内存比64KB大一个Header的的大小，用来标识块的空间到此为止 */
     void *block = malloc(BLOCK_SIZE + sizeof(Header));
     if(NULL == block)
     {
@@ -130,6 +391,7 @@ static Block *dmemory_Block_init()
     pBlock->pre = NULL;
     pBlock->next = NULL;
 
+    /* endHeader的特点是size属性为0，到此表示该内存块遍历完成 */
     Header *endHeader = (Header *)(block + BLOCK_SIZE);
     endHeader->size = 0;
     return pBlock;
@@ -142,6 +404,7 @@ static void dmemory_Block_delete(Block *ptrBlock)
         return;
     }
 
+    /* Header和内存块均是在此时真正释放 */
     free(ptrBlock->block);
     free(ptrBlock);
     ptrBlock = NULL;
@@ -211,6 +474,8 @@ int dmemory_init()
 
     Header *firstSpare = (Header *)(firstBlock->block);
     firstSpare->available = 0xff;
+
+    /* 初始化后第一个空闲内存块大小为64KB-sizeof(Header)，将该内存块插入到spareList中 */
     firstSpare->size = BLOCK_SIZE - sizeof(Header);
     dmemory_insert_to_spare(firstSpare);
     return INIT_SUCCESS;
@@ -222,6 +487,7 @@ static void *dmemory_get_memAddr_by_header(Header *pHeader)
     {
         return NULL;
     }
+    /* Header后紧跟的就是对应的内存块首地址 */
     void *res = (void *)(pHeader + 1);
     return res;
 }
@@ -249,7 +515,6 @@ static void dmemory_move_to_alloc(Header *pHeader)
     // pHeader->next = dstBehind;
 
     // pHeader->available = false;
-    /////////////////////////////
     pHeader->pre = NULL;
     pHeader->next = NULL;
     dmemory_insert_to_alloc(pHeader);
@@ -317,10 +582,6 @@ static void *dmemory_BestFit_search_spare(unsigned int dataSize)
 
         pTravelHeader = pTravelHeader->next;
     }
-    // if(NULL != res)
-    // {
-    //     return res;
-    // }
 
     Block *newBlock = dmemory_Block_init();
     if(NULL == newBlock)
