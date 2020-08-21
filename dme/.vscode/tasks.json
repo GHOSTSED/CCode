@@ -7,8 +7,8 @@
 			"command": "C:\\mingw64\\bin\\gcc.exe",
 			"args": [
 				"-g",
-				"-Wall",
-				"-Werror",
+				// "-Wall",
+				// "-Werror",
 				"${file}",
 				"${fileDirname}\\DMemory.c",
 				"-o",
