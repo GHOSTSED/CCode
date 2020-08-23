@@ -1,4 +1,4 @@
-#include "DMemory.h"
+#include "../include/DMemory.h"
 #include <stdlib.h>
 #include <time.h>
 
@@ -22,6 +22,7 @@ int main()
     // dmemory_delete();
     // system("pause");
     dmemory_init();
+
     srand(time(NULL));
     void **lloc[512];
     int i;
@@ -35,15 +36,19 @@ int main()
     {
         dmemory_free(lloc[i]);
     }
-    printf("**************************************before merge******************************************\n");
+    printf("**************************************now memory condition******************************************\n");
     dmemory_printAllocInfo();
     dmemory_printSpareInfo();
 
+    unsigned int frag = dmemory_fragment_space_count();
+    printf("\nfragment size: %d\n", frag);
     dmemory_merge_spare_space();
 
     printf("**************************************after merge******************************************\n");
     dmemory_printSpareInfo();   
 
+    frag = dmemory_fragment_space_count();
+    printf("\nfragment size: %d\n", frag);
+
     dmemory_delete();
-    system("pause");
 }

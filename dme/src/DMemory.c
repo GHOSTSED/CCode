@@ -47,7 +47,7 @@ typedef struct _BlockList
 /*************************************************************************************************************************************/
 /*												   VARIABLES																		 */
 /*************************************************************************************************************************************/
-static BlockList *pBlockList = NULL; /* 静态全局变量，大内存块链表，内存获取来源 */
+static BlockList *pBlockList = NULL; /* 静态全局变量，Block链表，内存获取来源 */
 
 /*************************************************************************************************************************************/
 /*												   FUNCTIONS																		 */
@@ -416,6 +416,7 @@ static Block *dmemory_Block_init()
     /* endHeader的特点是size属性为0，到此表示该内存块遍历完成 */
     Header *endHeader = (Header *)(block + BLOCK_SIZE);
     endHeader->size = 0;
+    endHeader->available = 0x00;
     return pBlock;
 }
 
@@ -977,5 +978,52 @@ int dmemory_set_strategy(int strategy)
     {
         return ILLEGAL_INDEX;
     }
+    
+}
+
+unsigned int dmemory_fragment_space_count()
+{
+    if(NULL == pBlockList)
+    {
+        return 0;
+    }
+    unsigned int fragmentSpace = 0;
+    Block *pTravelBlock = pBlockList->first;
+    while (NULL != pTravelBlock)
+    {
+        char preAvailable = 0x00;
+        Header *pTravelHeader = (Header *)(pTravelBlock->block);
+
+        while (NULL != pTravelHeader)
+        {
+            Header *pNextHeader = dmemory_get_next_header(pTravelHeader);
+            if(NULL != pNextHeader 
+            && 0x00 == preAvailable 
+            && 0x00 == pNextHeader->available 
+            && 0xff == pTravelHeader->available
+            && pTravelHeader->size < FRAGMENT_EDGE)
+            {
+                fragmentSpace = fragmentSpace + pTravelHeader->size;
+                pTravelHeader = dmemory_get_next_header(pNextHeader);
+                preAvailable = pNextHeader->available;
+            }
+            else if(NULL == pNextHeader 
+            && 0x00 == preAvailable 
+            && 0xff == pTravelHeader->available
+            && pTravelHeader->size < FRAGMENT_EDGE)
+            {
+                fragmentSpace = fragmentSpace + pTravelHeader->size;
+                break;
+            }
+            else
+            {
+                preAvailable = pTravelHeader->available;
+                pTravelHeader = dmemory_get_next_header(pTravelHeader);
+            }
+        }
+        pTravelBlock = pTravelBlock->next;
+    }
+
+    return fragmentSpace;
     
 }

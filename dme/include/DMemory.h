@@ -23,6 +23,7 @@
 #define ILLEGAL_INDEX -5
 #define STRATEGT_BEST_FIT 10
 #define STRATEGY_WORST_FIT 20
+#define FRAGMENT_EDGE 256
 
 /*************************************************************************************************************************************/
 /*												   FUNCTIONS																		 */
