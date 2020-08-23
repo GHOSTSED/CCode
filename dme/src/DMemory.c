@@ -1,15 +1,12 @@
 /*************************************************************************************************************************************/
 /*												  INCLUDE_FILES																		 */
 /*************************************************************************************************************************************/
-#include "DMemory.h"
+#include "../include/DMemory.h"
 
 /*************************************************************************************************************************************/
 /*												   TYPES																		 */
 /*************************************************************************************************************************************/
-// typedef struct _Header Header;
-// typedef struct _HList HList;
-// typedef struct _Block Block;
-// typedef struct _BlockList BlockList;
+
 
 /* 用于存储小内存块信息的头部 */
 typedef struct _Header
@@ -43,6 +40,8 @@ typedef struct _BlockList
 
     Block *first; /* 指向首个大内存块 */
     Block *last;  /* 指向最后一个大内存块 */
+
+    int strategy;
 } BlockList;
 
 /*************************************************************************************************************************************/
@@ -72,10 +71,10 @@ static HList *dmemory_HList_init();
 *
 *@param[in] HList* pHList       指向要销毁的链表的指针
 *
-*@return						N/A
+*@return						执行情况，分为两种：NULL_POINTER：传入了空指针；OP_SUCCESS：操作成功
 *@retval
 */
-static void dmemory_HList_delete(HList *pHList);
+static int dmemory_HList_delete(HList *pHList);
 
 /*
 *@fn							static Block *dmemory_Block_init();
@@ -96,10 +95,10 @@ static Block *dmemory_Block_init();
 *
 *@param[in] Block* ptrBlock     要销毁的大内存块
 *
-*@return						N/A
+*@return						执行情况，分为两种：NULL_POINTER：传入了空指针；OP_SUCCESS：操作成功
 *@retval
 */
-static void dmemory_Block_delete(Block *ptrBlock);
+static int dmemory_Block_delete(Block *ptrBlock);
 
 /*
 *@fn							static void *dmemory_get_memAddr_by_header(Header *pHeader);
@@ -120,10 +119,10 @@ static void *dmemory_get_memAddr_by_header(Header *pHeader);
 *
 *@param[in] Header* pHeader     要进行移动的头部
 *
-*@return						N/A
+*@return						执行情况，分为两种：NULL_POINTER：传入了空指针；OP_SUCCESS：操作成功
 *@retval
 */
-static void dmemory_move_to_alloc(Header *pHeader);
+static int dmemory_move_to_alloc(Header *pHeader);
 
 /*
 *@fn							static void dmemory_move_to_spare(Header *pDataHeader);
@@ -132,10 +131,10 @@ static void dmemory_move_to_alloc(Header *pHeader);
 *
 *@param[in] Header* pHeader     要进行移动的头部
 *
-*@return						N/A
+*@return						执行情况，分为两种：NULL_POINTER：传入了空指针；OP_SUCCESS：操作成功
 *@retval
 */
-static void dmemory_move_to_spare(Header *pDataHeader);
+static int dmemory_move_to_spare(Header *pDataHeader);
 
 /*
 *@fn							static void dmemory_insert_to_alloc(Header *pHeader);
@@ -144,10 +143,10 @@ static void dmemory_move_to_spare(Header *pDataHeader);
 *
 *@param[in] Header* pHeader     要进行插入的头部
 *
-*@return						N/A
+*@return						执行情况，分为两种：NULL_POINTER：传入了空指针；OP_SUCCESS：操作成功
 *@retval
 */
-static void dmemory_insert_to_alloc(Header *pHeader);
+static int dmemory_insert_to_alloc(Header *pHeader);
 
 /*
 *@fn							static void dmemory_insert_to_spare(Header *pInsertHeader);
@@ -156,10 +155,10 @@ static void dmemory_insert_to_alloc(Header *pHeader);
 *
 *@param[in] Header* pInsertHeader     要进行插入的Header
 *
-*@return						N/A
+*@return						执行情况，分为两种：NULL_POINTER：传入了空指针；OP_SUCCESS：操作成功
 *@retval
 */
-static void dmemory_insert_to_spare(Header *pInsertHeader);
+static int dmemory_insert_to_spare(Header *pInsertHeader);
 
 /*
 *@fn							        static void *dmemory_BestFit_search_spare(unsigned int dataSize);
@@ -180,22 +179,22 @@ static void *dmemory_BestFit_search_spare(unsigned int dataSize);
 *
 *@param[in] Header* pHeader             要获取下一个头部的头部
 *
-*@return						        地址上与该头部相邻的下一个头部
+*@return						        地址上与该头部相邻的下一个头部, 如果该头部代表的内存已是末尾，则返回NULL
 *@retval
 */
 static Header *dmemory_get_next_header(Header *pHeader);
 
 /*
-*@fn							        static void dmemory_remove_from_spare(Header *pHeader);
+*@fn							        static void dmemory_remove_from_HList(Header *pHeader);
 *@brief   						        将头部从空闲链表中移除
 *@details	
 *
 *@param[in] Header* pHeader             要移除的头部指针
 *
-*@return						        N/A
+*@return						        执行情况，分为两种：NULL_POINTER：传入了空指针；OP_SUCCESS：操作成功
 *@retval
 */
-static void dmemory_remove_from_spare(Header *pHeader);
+static int dmemory_remove_from_HList(Header *pHeader);
 
 /*
 *@fn							        static int dmemory_is_header_in_alloc(Header *pHeader)；
@@ -204,7 +203,7 @@ static void dmemory_remove_from_spare(Header *pHeader);
 *
 *@param[in] Header* pHeader             要进行查询的头部指针
 *
-*@return						        若该头部不存在于已分配链表中，返回NOT_EXIST(-3)；否则，返回EXIST(2)
+*@return						        若传入空指针或pBlockList未初始化，返回NULL_POINTER；若该头部不存在于已分配链表中，返回NOT_EXIST(-3)；否则，返回EXIST(2)
 *@retval
 */
 static int dmemory_is_header_in_alloc(Header *pHeader);
@@ -282,6 +281,18 @@ void dmemory_delete();
 void *dmemory_malloc(unsigned int dataSize);
 
 /*
+*@fn							    void dmemory_free(void *pData);
+*@brief   						    用于进行内存空间释放的接口
+*@details	
+*
+*@param[in] void* pData             指向要释放的空间的指针                  
+*
+*@return						    执行情况，分为三种：NULL_POINTER：传入空指针或pBlockList未初始化；ILLEGAL_INDEX：传入的地址非法，在allocList中找不到；OP_SUCCESS：释放成功
+*@retval
+*/
+int dmemory_free(void *pData);
+
+/*
 *@fn							    void *dmemory_calloc(unsigned int dataSize);
 *@brief   						    用于进行内存申请的接口，会将申请到的内存空间用0填充
 *@details	
@@ -291,7 +302,7 @@ void *dmemory_malloc(unsigned int dataSize);
 *@return						    若成功申请，返回指向申请到的内存块的指针；否则返回NULL
 *@retval
 */
-void dmemory_free(void *pData);
+void *dmemory_calloc(unsigned int dataSize);
 
 /*
 *@fn							    void *dmemory_realloc(void *srcPtr, unsigned int dataSize);
@@ -304,19 +315,28 @@ void dmemory_free(void *pData);
 *@return						    若成功申请，返回指向申请到的内存块的指针；否则返回NULL
 *@retval
 */
-void *dmemory_calloc(unsigned int dataSize);
-
-/*
-*@fn							    void dmemory_free(void *pData);
-*@brief   						    用于进行内存空间释放的接口
-*@details	
-*
-*@param[in] void* pData             指向要释放的空间的指针                  
-*
-*@return						    N/A
-*@retval
-*/
 void *dmemory_realloc(void *srcPtr, unsigned int dataSize);
+
+static int dmemory_insert_to_alloc(Header *pHeader)
+{
+    if(NULL == pBlockList || NULL == pHeader)
+    {
+        return NULL_POINTER;
+    }
+    /* 将节点插入到allocList的附加头节点之后 */
+    Header *pFrontHeader = pBlockList->allocList->first;
+    Header *pBehindHeader = pFrontHeader->next;
+
+    pFrontHeader->next = pHeader;
+
+    pHeader->pre = pFrontHeader;
+    pHeader->next = pBehindHeader;
+
+    pBehindHeader->pre = pHeader;
+
+    pHeader->available = 0x00;
+    return OP_SUCCESS;
+}
 
 static HList *dmemory_HList_init()
 {
@@ -359,16 +379,17 @@ static HList *dmemory_HList_init()
     return pHList;
 }
 
-static void dmemory_HList_delete(HList *pHList)
+static int dmemory_HList_delete(HList *pHList)
 {
     if (NULL == pHList)
     {
-        return;
+        return NULL_POINTER;
     }
     /* 只用释放头尾节点，中间的头部是Block的一部分，由Block进行free */
     free(pHList->first);
     free(pHList->last);
     free(pHList);
+    return OP_SUCCESS;
 }
 
 static Block *dmemory_Block_init()
@@ -398,21 +419,26 @@ static Block *dmemory_Block_init()
     return pBlock;
 }
 
-static void dmemory_Block_delete(Block *ptrBlock)
+static int dmemory_Block_delete(Block *ptrBlock)
 {
     if (NULL == ptrBlock)
     {
-        return;
+        return NULL_POINTER;
     }
 
     /* Header和内存块均是在此时真正释放 */
     free(ptrBlock->block);
     free(ptrBlock);
     ptrBlock = NULL;
+    return OP_SUCCESS;
 }
 
-static void dmemory_insert_to_spare(Header *pInsertHeader)
+static int dmemory_insert_to_spare(Header *pInsertHeader)
 {
+    if(NULL == pBlockList || NULL == pInsertHeader)
+    {
+        return NULL_POINTER;
+    }
     /* 从附加头节点之后的节点开始遍历 */
     Header *pTravelHeader = pBlockList->spareList->first->next;
 
@@ -431,6 +457,7 @@ static void dmemory_insert_to_spare(Header *pInsertHeader)
     pTravelHeader->pre = pInsertHeader;
 
     pInsertHeader->available = 0xff;
+    return OP_SUCCESS;
 }
 
 int dmemory_init()
@@ -475,6 +502,7 @@ int dmemory_init()
     pBlockList->spareList = spareList;
     pBlockList->first = firstBlock;
     pBlockList->last = firstBlock;
+    pBlockList->strategy = STRATEGT_BEST_FIT;
 
     Header *firstSpare = (Header *)(firstBlock->block);
     firstSpare->available = 0xff;
@@ -496,11 +524,11 @@ static void *dmemory_get_memAddr_by_header(Header *pHeader)
     return res;
 }
 
-static void dmemory_move_to_alloc(Header *pHeader)
+static int dmemory_move_to_alloc(Header *pHeader)
 {
     if (NULL == pHeader)
     {
-        return;
+        return NULL_POINTER;
     }
 
     Header *srcFront = pHeader->pre;
@@ -514,10 +542,15 @@ static void dmemory_move_to_alloc(Header *pHeader)
 
     /* 将Header插入到allocList中 */
     dmemory_insert_to_alloc(pHeader);
+    return OP_SUCCESS;
 }
 
-static void dmemory_move_to_spare(Header *pDataHeader)
+static int dmemory_move_to_spare(Header *pDataHeader)
 {
+    if(NULL == pDataHeader)
+    {
+        return NULL_POINTER;
+    }
     /* 将Header从allocList中摘下 */
     Header *srcFront = pDataHeader->pre;
     Header *srcBehind = pDataHeader->next;
@@ -530,22 +563,8 @@ static void dmemory_move_to_spare(Header *pDataHeader)
 
     /* 将Header插入到spareList中 */
     dmemory_insert_to_spare(pDataHeader);
-}
 
-static void dmemory_insert_to_alloc(Header *pHeader)
-{
-    /* 将节点插入到allocList的附加头节点之后 */
-    Header *pFrontHeader = pBlockList->allocList->first;
-    Header *pBehindHeader = pFrontHeader->next;
-
-    pFrontHeader->next = pHeader;
-
-    pHeader->pre = pFrontHeader;
-    pHeader->next = pBehindHeader;
-
-    pBehindHeader->pre = pHeader;
-
-    pHeader->available = 0x00;
+    return OP_SUCCESS;
 }
 
 static void *dmemory_WorstFit_search_spare(unsigned int dataSize)
@@ -676,6 +695,10 @@ static void *dmemory_BestFit_search_spare(unsigned int dataSize)
 
 static Header *dmemory_get_next_header(Header *pHeader)
 {
+    if(NULL == pHeader)
+    {
+        return NULL;
+    }
     /* 获取地址上连续的下一个Header。譬如：已知一个Header地址为x，其管理的内存块大小为n，则下一个Header地址为x+sizeof(Header)+n */
     Header *res = (Header *)((void *)(pHeader + 1) + pHeader->size);
     if (0 == res->size)
@@ -685,8 +708,12 @@ static Header *dmemory_get_next_header(Header *pHeader)
     return res;
 }
 
-static void dmemory_remove_from_spare(Header *pHeader)
+static int dmemory_remove_from_HList(Header *pHeader)
 {
+    if(NULL == pHeader)
+    {
+        return NULL_POINTER;
+    }
     Header *front = pHeader->pre;
     Header *behind = pHeader->next;
 
@@ -695,6 +722,7 @@ static void dmemory_remove_from_spare(Header *pHeader)
 
     pHeader->next = NULL;
     pHeader->pre = NULL;
+    return OP_SUCCESS;
 }
 
 void dmemory_merge_spare_space()
@@ -717,9 +745,9 @@ void dmemory_merge_spare_space()
                     Header *frontHeader = nextHeader;
                     nextHeader = dmemory_get_next_header(nextHeader);
                     pTravelHeader->size = pTravelHeader->size + frontHeader->size + sizeof(Header);
-                    dmemory_remove_from_spare(frontHeader);
+                    dmemory_remove_from_HList(frontHeader);
                 }
-                dmemory_remove_from_spare(pTravelHeader);
+                dmemory_remove_from_HList(pTravelHeader);
                 dmemory_insert_to_spare(pTravelHeader);
 
                 if (NULL == nextHeader)
@@ -813,21 +841,41 @@ static int dmemory_is_header_in_alloc(Header *pHeader)
 
 void *dmemory_malloc(unsigned int dataSize)
 {
+    void *res;
     if (NULL == pBlockList || 0 == dataSize)
     {
         return NULL;
     }
-    void *res = dmemory_BestFit_search_spare(dataSize);
+
+    if(STRATEGT_BEST_FIT == pBlockList->strategy)
+    {
+        res = dmemory_BestFit_search_spare(dataSize);
+    }
+    else
+    {
+        res = dmemory_WorstFit_search_spare(dataSize);
+    }
+    
     return res;
 }
 
 void *dmemory_calloc(unsigned int dataSize)
 {
+    void *res;
     if (NULL == pBlockList || 0 == dataSize)
     {
         return NULL;
     }
-    void *res = dmemory_BestFit_search_spare(dataSize);
+
+    if(STRATEGT_BEST_FIT == pBlockList->strategy)
+    {
+        res = dmemory_BestFit_search_spare(dataSize);
+    }
+    else
+    {
+        res = dmemory_WorstFit_search_spare(dataSize);
+    }
+
     if (NULL == res)
     {
         return NULL;
@@ -839,6 +887,7 @@ void *dmemory_calloc(unsigned int dataSize)
 
 void *dmemory_realloc(void *srcPtr, unsigned int dataSize)
 {
+    void *res;
     if (NULL == srcPtr || 0 == dataSize)
     {
         return NULL;
@@ -850,7 +899,15 @@ void *dmemory_realloc(void *srcPtr, unsigned int dataSize)
         return NULL;
     }
 
-    void *res = dmemory_BestFit_search_spare(dataSize);
+    if(STRATEGT_BEST_FIT == pBlockList->strategy)
+    {
+        res = dmemory_BestFit_search_spare(dataSize);
+    }
+    else
+    {
+        res = dmemory_WorstFit_search_spare(dataSize);
+    }
+    
     if (NULL == res)
     {
         return NULL;
@@ -863,12 +920,12 @@ void *dmemory_realloc(void *srcPtr, unsigned int dataSize)
     return res;
 }
 
-void dmemory_free(void *pData)
+int dmemory_free(void *pData)
 {
     static unsigned int free_count = 0;
-    if (NULL == pData)
+    if (NULL == pData || NULL == pBlockList)
     {
-        return;
+        return NULL_POINTER;
     }
     Header *pDataHeader = (Header *)(pData - sizeof(Header));
     HList *allocList = pBlockList->allocList;
@@ -886,7 +943,7 @@ void dmemory_free(void *pData)
     }
     if (0 == flag)
     {
-        return;
+        return ILLEGAL_INDEX;
     }
     dmemory_move_to_spare(pDataHeader);
 
@@ -896,4 +953,29 @@ void dmemory_free(void *pData)
         dmemory_merge_spare_space();
         free_count = 0;
     }
+    return OP_SUCCESS;
+}
+
+int dmemory_set_strategy(int strategy)
+{
+    if(NULL == pBlockList)
+    {
+        return NULL_POINTER;
+    }
+
+    if(STRATEGT_BEST_FIT == strategy)
+    {
+        pBlockList->strategy = strategy;
+        return OP_SUCCESS;
+    }
+    else if(STRATEGY_WORST_FIT == strategy)
+    {
+        pBlockList->strategy = strategy;
+        return OP_SUCCESS;
+    }
+    else
+    {
+        return ILLEGAL_INDEX;
+    }
+    
 }

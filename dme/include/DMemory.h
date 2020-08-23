@@ -18,7 +18,11 @@
 #define EXIST 2
 #define NOT_EXIST -3
 #define INIT_SUCCESS 1
+#define OP_SUCCESS 1
 #define BLOCK_MERGE_INDEX 50
+#define ILLEGAL_INDEX -5
+#define STRATEGT_BEST_FIT 10
+#define STRATEGY_WORST_FIT 20
 
 /*************************************************************************************************************************************/
 /*												   FUNCTIONS																		 */
@@ -127,9 +131,23 @@ void *dmemory_realloc(void *srcPtr, unsigned int dataSize);
 *
 *@param[in] void* pData             指向要释放的空间的指针                  
 *
-*@return						    N/A
+*@return						    执行情况，分为三种：NULL_POINTER：传入空指针或pBlockList未初始化；ILLEGAL_INDEX：传入的地址非法，在allocList中找不到；OP_SUCCESS：释放成功
 *@retval
 */
-void dmemory_free(void *pData);
+int dmemory_free(void *pData);
+
+/*
+*@fn							    int dmemory_set_strategy(int strategy);
+*@brief   						    用于设置内存分配策略的函数
+*@details	
+*
+*@param[in] int strategy            策略对应的序号（目前有STRATEGY_BEST_FIT和STRATEGY_WORST_FIT两种）               
+*
+*@return						    执行情况，分为3种：NULL_POINTER：pBlockList未初始化；ILLEGAL_INDEX：传入的策略标号非法；OP_SUCCESS：设置成功
+*@retval
+*/
+int dmemory_set_strategy(int strategy);
+
+unsigned int dmemory_fragment_space_count();
 
 #endif
