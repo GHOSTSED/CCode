@@ -8,12 +8,14 @@
 			"args": [
 				"-g",
 				"${file}",
+				"${workspaceFolder}/src/DList.c",
+				"${workspaceFolder}/include/DMonitor.h",
 				"-o",
-				"${fileDirname}/${fileBasenameNoExtension}"
+				"${workspaceFolder}/exe/${fileBasenameNoExtension}",
 			],
-			"options": {
-				"cwd": "${workspaceFolder}"
-			},
+			// "options": {
+			// 	"cwd": "${workspaceFolder}"
+			// },
 			"problemMatcher": [
 				"$gcc"
 			],

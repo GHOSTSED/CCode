@@ -1,20 +1,20 @@
 #include "../include/DList.h"
 
-struct _DListNode
-{
-	void *data;
-	struct _DListNode *next;
-	struct _DListNode *pre;
-};
+// struct _DListNode
+// {
+// 	void *data;
+// 	struct _DListNode *next;
+// 	struct _DListNode *pre;
+// };
 
-struct _DList
-{
-	struct _DListNode *first; //头节点
-	struct _DListNode *last;  //尾节点
-	void *lock;				  //链表锁
+// struct _DList
+// {
+// 	struct _DListNode *first; //头节点
+// 	struct _DListNode *last;  //尾节点
+// 	void *lock;				  //链表锁
 
-	fp_delete dlist_data_delete;
-};
+// 	fp_delete dlist_data_delete;
+// };
 
 void dlist_lock(DList *pList, fp_lock_list lockIt);
 void dlist_unlock(DList *pList, fp_unlock_list unlockIt);

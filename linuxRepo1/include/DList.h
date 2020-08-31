@@ -28,6 +28,22 @@ typedef void(*fp_delete)(void *data);//用于对数据节点进行删除的操�
 typedef void(*fp_lock_list)(void *lock);//用于对链表上锁的函数
 typedef void(*fp_unlock_list)(void *lock);//用于对链表解锁的函数
 
+struct _DListNode
+{
+	void *data;
+	struct _DListNode *next;
+	struct _DListNode *pre;
+};
+
+struct _DList
+{
+	struct _DListNode *first; //头节点
+	struct _DListNode *last;  //尾节点
+	void *lock;				  //链表锁
+
+	fp_delete dlist_data_delete;
+};
+
 typedef struct _DListNode DListNode;//通用链表节点数据结构
 
 typedef struct _DList DList;//通用链表数据结构
