@@ -1,6 +1,9 @@
 #ifndef _DMONITOR_H_
 #define _DMONITOR_H_
 
+/*************************************************************************************************************************************/
+/*												  INCLUDE_FILES																		 */
+/*************************************************************************************************************************************/
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -12,9 +15,17 @@
 #include <error.h>
 #include "./DList.h"
 
+/*************************************************************************************************************************************/
+/*												    DEFINES																		 	 */
+/*************************************************************************************************************************************/
 #define DEFAULT_FIFO_PATH "../pipe/myFifo"
 #define MAX_LENGTH 50
+#define INIT_SUCCESS 1
+#define INIT_FAILED -1
 
+/*************************************************************************************************************************************/
+/*												     TYPES																		     */
+/*************************************************************************************************************************************/
 typedef struct _SubProcess
 {
     int pid;
@@ -28,11 +39,18 @@ typedef struct _DMonitor
     char fifoPath[MAX_LENGTH];
 } DMonitor;
 
+/*************************************************************************************************************************************/
+/*												   FUNCTIONS																		 */
+/*************************************************************************************************************************************/
 int dmonitor_subProcess_init(const char *exePath)
 {
-    if(0 == access(exePath, F_OK|X_OK))
+    if (0 == access(exePath, F_OK | X_OK))
     {
-        
+        return INIT_SUCCESS;
+    }
+    else
+    {
+        return INIT_FAILED;
     }
 }
 
@@ -179,8 +197,72 @@ void dmonitor_run(DMonitor *pMonitor)
     while (pNode != pList->last)
     {
         SubProcess *pSubProcess = (SubProcess *)(pNode->data);
+        subPid = fork();
+        if (subPid < 0)
+        {
+            printf("create subProcess failed!\n");
+            break;
+        }
+        else if (0 == subPid)
+        {
+            int ret = dmonitor_subProcess_init(pSubProcess->path);
+            fifoFd = open(fifoPath, O_WRONLY);
+            if (-1 == fifoFd)
+            {
+                printf("subProcess %d open fifo failed!\n", getpid());
+                break;
+            }
+            /* 子进程初始化成功的情况下，子进程的处理 */
+            if (ret > 0)
+            {
+                strncpy(fifoBuf, "init_ok\0", MAX_LENGTH);
+                write(fifoFd, fifoBuf, MAX_LENGTH);
+                break;
+            }
+            /* 子进程初始化失败的情况，子进程的处理 */
+            else
+            {
+                strncpy(fifoBuf, "init_failed\0", MAX_LENGTH);
+                write(fifoFd, fifoBuf, MAX_LENGTH);
+                break;
+            }
+        }
+        else
+        {
+            fifoFd = open(fifoPath, O_RDONLY);
+            if(-1 == fifoFd)
+            {
+                printf("parent process open fifo failed!\n", getpid());
+                return;
+            }
+
+            read(fifoFd, fifoBuf, MAX_LENGTH);
+
+            if(0 == strcmp(fifoBuf, "init_ok"))
+            {
+                pSubProcess->pid = subPid;
+            }
+            else
+            {
+                printf("subProcess %d init failed!\n", subPid);
+                break;
+            }
+        }
         
     }
+
+    /* 是子进程的情况 */
+    if(0 == subPid)
+    {
+
+    }
+    /* 是父进程的情况 */
+    else
+    {
+        
+    }
+    
+
 }
 
 #endif

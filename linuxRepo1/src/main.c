@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include "../include/DMonitor.h"
 #include "../include/DList.h"
@@ -67,7 +68,7 @@ int main()
     //         printf("write failed!\n");
     //     }
     // }
-    DMonitor *myMonitor = dmonitor_init(NULL);
+    DMonitor *myMonitor = dmonitor_init(NULL, NULL);
     if(NULL == myMonitor)
     {
         printf("NULL\n");
