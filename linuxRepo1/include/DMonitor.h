@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <string.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -26,243 +27,49 @@
 /*************************************************************************************************************************************/
 /*												     TYPES																		     */
 /*************************************************************************************************************************************/
-typedef struct _SubProcess
-{
-    int pid;
-    char path[MAX_LENGTH];
-    char isExit;
-} SubProcess;
+typedef struct _SubProcess SubProcess;
 
-typedef struct _DMonitor
-{
-    DList *subProcessList;
-    char fifoPath[MAX_LENGTH];
-} DMonitor;
+typedef struct _DMonitor DMonitor;
 
 /*************************************************************************************************************************************/
 /*												   FUNCTIONS																		 */
 /*************************************************************************************************************************************/
-int dmonitor_subProcess_init(const char *exePath)
-{
-    if (0 == access(exePath, F_OK | X_OK))
-    {
-        return INIT_SUCCESS;
-    }
-    else
-    {
-        return INIT_FAILED;
-    }
-}
 
-void dmonitor_print_subProcess(void *vSubProcess)
-{
-    SubProcess *pSubProcess = (SubProcess *)vSubProcess;
-    printf("PID:%d\nPath:%s\n", pSubProcess->pid, pSubProcess->path);
-}
+/*
+*@fn				                        DMonitor *dmonitor_init(const char *exeOrderPath, const char *fifoPath);
+*@brief   			                        用于对DMonitor进行初始化
+*@details	                                该函数主要作用为从exeOrderPath中读入要执行的各个文件的路径，还不涉及到创建子进程等操作		
+*
+*@param[in] const char* exeOrderPath	    用户给定的子进程可执行文件的启动顺序的文本文件，如果传入NULL，默认为inputFile文件夹下的execOrder.txt
+*@param[in] const char* fifoPath	        用户给定的用于进行进程间通信的有名管道的路径，如果传入NULL，默认为pipe文件夹下的myFifo	    
+*
+*@return			                        读取文件信息后的DMonitor指针，如果中间发生错误，则返回NULL
+*@retval			
+*/
+DMonitor *dmonitor_init(const char *exeOrderPath, const char *fifoPath);
 
-SubProcess *dmonitor_create_subProcess_info(const char *exePath)
-{
-    SubProcess *pSubProcess = (SubProcess *)malloc(sizeof(SubProcess));
-    if (NULL == pSubProcess)
-    {
-        return NULL;
-    }
+/*
+*@fn				                        int dmonitor_delete(DMonitor *pMonitor);
+*@brief   			                        用于对DMonitor对象进行销毁
+*@details	                                		
+*
+*@param[in] DMonitor* pMonitor	            要销毁的DMonitor对象
+*
+*@return			                        执行情况，如果传入NULL，返回NULL_POINTER；成功销毁返回SUCCESS
+*@retval			
+*/
+int dmonitor_delete(DMonitor *pMonitor);
 
-    pSubProcess->isExit = 0x00;
-    strncpy(pSubProcess->path, exePath, MAX_LENGTH);
-    pSubProcess->pid = -10;
-
-    return pSubProcess;
-}
-
-DMonitor *dmonitor_init(const char *exeOrderPath, const char *fifoPath)
-{
-    FILE *inputFile = NULL;
-    int paramentCount;
-    char exePath[MAX_LENGTH];
-    SubProcess *pSubprocess = NULL;
-    int op_result;
-    DMonitor *pMonitor = NULL;
-
-    pMonitor = (DMonitor *)malloc(sizeof(DMonitor));
-    if (NULL == pMonitor)
-    {
-        return NULL;
-    }
-
-    DList *pList = dlist_init(NULL, NULL);
-    if (NULL == pList)
-    {
-        free(pMonitor);
-        return NULL;
-    }
-
-    if (NULL == exeOrderPath)
-    {
-        inputFile = fopen("../InputFile/execOrder.txt", "r");
-    }
-    else
-    {
-        inputFile = fopen(exeOrderPath, "r");
-    }
-
-    if (NULL == inputFile)
-    {
-        free(pMonitor);
-        dlist_delete(pList);
-        return NULL;
-    }
-
-    while ((paramentCount = fscanf(inputFile, "%s\n", exePath)) && 1 == paramentCount)
-    {
-        pSubprocess = dmonitor_create_subProcess_info(exePath);
-        if (NULL == pSubprocess)
-        {
-            free(pMonitor);
-            dlist_delete(pList);
-            return NULL;
-        }
-
-        op_result = dlist_appened_node(pList, pSubprocess);
-        if (op_result < 0)
-        {
-            free(pMonitor);
-            dlist_delete(pList);
-            free(pSubprocess);
-            return NULL;
-        }
-
-        memset(exePath, 0, MAX_LENGTH);
-    }
-
-    pMonitor->subProcessList = pList;
-    if (NULL == fifoPath || 0 == strlen(fifoPath))
-    {
-        memset(pMonitor->fifoPath, 0, MAX_LENGTH);
-    }
-    else
-    {
-        strncpy(pMonitor->fifoPath, fifoPath, MAX_LENGTH);
-    }
-
-    return pMonitor;
-}
-
-void dmonitor_delete(DMonitor *pMonitor)
-{
-    if (NULL == pMonitor)
-    {
-        return;
-    }
-
-    dlist_delete(pMonitor->subProcessList);
-    free(pMonitor);
-}
-
-void dmonitor_run(DMonitor *pMonitor)
-{
-    if (NULL == pMonitor)
-    {
-        printf("don't input NULL pointer!\n");
-        return;
-    }
-
-    int fifoRet, fifoFd;
-    char *fifoPath;
-    char fifoBuf[MAX_LENGTH];
-
-    if (0 == pMonitor->fifoPath[0])
-    {
-        fifoPath = DEFAULT_FIFO_PATH;
-    }
-    else
-    {
-        fifoPath = pMonitor->fifoPath;
-    }
-
-    if (-1 == access(fifoPath, F_OK))
-    {
-        fifoRet = mkfifo(fifoPath, 0777);
-        if (-1 == fifoRet)
-        {
-            printf("create FIFO failed!\n");
-            return;
-        }
-    }
-
-    DList *pList = pMonitor->subProcessList;
-    DListNode *pNode = pList->first->next;
-    int subPid;
-
-    while (pNode != pList->last)
-    {
-        SubProcess *pSubProcess = (SubProcess *)(pNode->data);
-        subPid = fork();
-        if (subPid < 0)
-        {
-            printf("create subProcess failed!\n");
-            break;
-        }
-        else if (0 == subPid)
-        {
-            int ret = dmonitor_subProcess_init(pSubProcess->path);
-            fifoFd = open(fifoPath, O_WRONLY);
-            if (-1 == fifoFd)
-            {
-                printf("subProcess %d open fifo failed!\n", getpid());
-                break;
-            }
-            /* 子进程初始化成功的情况下，子进程的处理 */
-            if (ret > 0)
-            {
-                strncpy(fifoBuf, "init_ok\0", MAX_LENGTH);
-                write(fifoFd, fifoBuf, MAX_LENGTH);
-                break;
-            }
-            /* 子进程初始化失败的情况，子进程的处理 */
-            else
-            {
-                strncpy(fifoBuf, "init_failed\0", MAX_LENGTH);
-                write(fifoFd, fifoBuf, MAX_LENGTH);
-                break;
-            }
-        }
-        else
-        {
-            fifoFd = open(fifoPath, O_RDONLY);
-            if(-1 == fifoFd)
-            {
-                printf("parent process open fifo failed!\n", getpid());
-                return;
-            }
-
-            read(fifoFd, fifoBuf, MAX_LENGTH);
-
-            if(0 == strcmp(fifoBuf, "init_ok"))
-            {
-                pSubProcess->pid = subPid;
-            }
-            else
-            {
-                printf("subProcess %d init failed!\n", subPid);
-                break;
-            }
-        }
-        
-    }
-
-    /* 是子进程的情况 */
-    if(0 == subPid)
-    {
-
-    }
-    /* 是父进程的情况 */
-    else
-    {
-        
-    }
-    
-
-}
+/*
+*@fn				                        void dmonitor_run(DMonitor *pMonitor);
+*@brief   			                        用于启动DMonitor对象
+*@details                                   主要内容为根据init读入的可执行文件的路径和顺序，挨个创建子进程并执行。内部为死循环，需要手动退出	                                		
+*
+*@param[in] DMonitor* pMonitor	            要启动的DMonitor对象
+*
+*@return			                        N/A
+*@retval			
+*/
+void dmonitor_run(DMonitor *pMonitor);
 
 #endif

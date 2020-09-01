@@ -7,9 +7,11 @@
 			"command": "/usr/bin/gcc",
 			"args": [
 				"-g",
+				"-Wall",
+				"-Werror",
 				"${file}",
 				"${workspaceFolder}/src/DList.c",
-				"${workspaceFolder}/include/DMonitor.h",
+				"${workspaceFolder}/src/DMonitor.c",
 				"-o",
 				"${workspaceFolder}/exe/${fileBasenameNoExtension}",
 			],
