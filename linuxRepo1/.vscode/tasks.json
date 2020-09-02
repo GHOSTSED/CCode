@@ -11,9 +11,10 @@
 				"-Werror",
 				"${file}",
 				"${workspaceFolder}/src/DList.c",
-				"${workspaceFolder}/src/DMonitor.c",
+				// "${workspaceFolder}/src/DMonitor.c",
 				"-o",
 				"${workspaceFolder}/exe/${fileBasenameNoExtension}",
+				"-lcunit"
 			],
 			// "options": {
 			// 	"cwd": "${workspaceFolder}"

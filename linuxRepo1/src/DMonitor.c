@@ -80,6 +80,11 @@ static SubProcess *dmonitor_create_subProcess_info(const char *exePath);
 
 static int dmonitor_find_negative_pid(const void *vSubProcess, const void *any)
 {
+    if(NULL == vSubProcess)
+    {
+        return -1;
+    }
+
     SubProcess *pSubProcess = (SubProcess *)vSubProcess;
 
     if (pSubProcess->pid < 0)
@@ -94,6 +99,11 @@ static int dmonitor_find_negative_pid(const void *vSubProcess, const void *any)
 
 static int dmonitor_find_subProcess_by_pid(const void *vSubProcess, const void *vPid)
 {
+    if(NULL == vSubProcess || NULL == vPid)
+    {
+        return -1;
+    }
+
     SubProcess *pSubProcess = (SubProcess *)vSubProcess;
     int pid = *(int *)vPid;
 
