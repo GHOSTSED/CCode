@@ -73,6 +73,41 @@ typedef struct _DMailListener
     DHashTable *tcpTable;
 } DMailListener;
 
+EmailTableItem *dmailListener_EmailTableItem_init(unsigned char *emailAddr)
+{
+    if(NULL == emailAddr)
+    {
+        return NULL;
+    }
+
+    EmailTableItem *pEmailTableItem = (EmailTableItem *)malloc(sizeof(EmailTableItem));
+    if(NULL == pEmailTableItem)
+    {
+        return NULL;
+    }
+
+    DList *receiveList = dlist_init(NULL);
+    if(NULL == receiveList)
+    {
+        free(pEmailTableItem);
+        return NULL;
+    }
+
+    DList *sendList = dlist_init(NULL);
+    if(NULL == sendList)
+    {
+        dlist_delete(receiveList);
+        free(pEmailTableItem);
+        return NULL;
+    }
+
+    pEmailTableItem->receiveList = receiveList;
+    pEmailTableItem->sendList = sendList;
+    strncpy(pEmailTableItem->userAddress, emailAddr, EMAIL_ADDRESS_MAX_LENGTH);
+
+    return pEmailTableItem;
+}
+
 SendListItem *dmailListener_SendListItem_init(const EmailInfoValue *pEmailInfo)
 {
     SendListItem *pSendListItem = (SendListItem *)malloc(sizeof(SendListItem));
@@ -114,6 +149,19 @@ unsigned int dmailListener_hash_by_TcpLinkKey(const void *vTcpLinkKey, size_t ke
     return hash;
 }
 
+unsigned int dmailListener_hash_by_emailAddress(const void *vEmailAddress, size_t keySize)
+{
+    unsigned char *pEmailAddress = (unsigned char *)vEmailAddress;
+    int addressLen = strlen(pEmailAddress);
+    int i;
+    unsigned int hash = 0;
+    for(i = 0; i < addressLen; i++)
+    {
+        hash = 31*hash + (unsigned int)(pEmailAddress[i]);
+    }
+    return hash;
+}
+
 int dmailListener_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *vTcpLinkKey)
 {
     TcpTableItem *pTcpTableItem = (TcpTableItem *)vTcpTableItem;
@@ -132,6 +180,14 @@ int dmailListener_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *v
     
 }
 
+int dmailListener_compare_by_EmailAddress(const void *vEmailTableItem, const void *vEmailAddress)
+{
+    EmailTableItem *pEmailTableItem = (EmailTableItem *)vEmailAddress;
+    unsigned char *pEmailAddress = (unsigned char *)vEmailAddress;
+
+    return strcmp(pEmailTableItem->userAddress, pEmailAddress);
+}
+
 TcpTableItem *dmailListener_TcpTableItem_init(const TcpLinkKey *pTcpLinkKey)
 {
     TcpTableItem *pItem = (TcpTableItem *)malloc(sizeof(TcpTableItem));
@@ -148,7 +204,8 @@ TcpTableItem *dmailListener_TcpTableItem_init(const TcpLinkKey *pTcpLinkKey)
     return pItem;
 }
 
-void dmailListener_to_next_state(TcpTableItem *pTcpItem, DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, char *pPayLoad, const struct pcap_pkthdr *pkthdr)
+
+void dmailListener_SMTP_to_next_state(TcpTableItem *pTcpItem, DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, char *pPayLoad, const struct pcap_pkthdr *pkthdr)
 {
     int nowState = pTcpItem->value.state;
     if(-1 == nowState)
@@ -206,9 +263,40 @@ void dmailListener_to_next_state(TcpTableItem *pTcpItem, DMailListener *pMailLis
         {
             pTcpItem->value.size = Seq - pTcpItem->value.startSeq - 6;
             strncpy(pTcpItem->value.time, ctime((const time_t *)&pkthdr->ts.tv_sec), TIME_MAX_LENGTH);
+
             SendListItem *pSendListItem = dmailListener_SendListItem_init(&(pTcpItem->value));
+            if(NULL == pSendListItem)
+            {
+                pTcpItem->value.state = -1;
+                return;
+            }
+
+            EmailTableItem *pEmailTableItem = dhashTable_query_by_key(pMailListener->emailTable, pTcpItem->value.senderAddress, strlen(pTcpItem->value.senderAddress), dmailListener_compare_by_EmailAddress);
+            if(NULL == pEmailTableItem)
+            {
+                pEmailTableItem = dmailListener_EmailTableItem_init(pTcpItem->value.senderAddress);
+                if(NULL == pEmailTableItem)
+                {
+                    pTcpItem->value.state = -1;
+                    free(pSendListItem);
+                    return;
+                }
+
+                dlist_appened_node(pEmailTableItem->sendList, pSendListItem);
+                dhashTable_insert_data(pMailListener->emailTable, pEmailTableItem->userAddress, EMAIL_ADDRESS_MAX_LENGTH, pEmailTableItem);
+            }
+            else
+            {
+                dhashTable_insert_data(pMailListener->emailTable, pTcpItem->value.senderAddress, EMAIL_ADDRESS_MAX_LENGTH, pEmailTableItem);
+            }
+            
+            pTcpItem->value.state = -1;
+        }
+        else
+        {
             
         }
+        
     }
     
     
@@ -236,7 +324,7 @@ void dmailListener_SMTP_parse(DMailListener *pMailListener, const u_char *packet
     }
     else
     {
-        dmailListener_to_next_state(pTcpTableItem, pMailListener, packet, pTcpLinkKey, Seq, pPayLoad, pkthdr);
+        dmailListener_SMTP_to_next_state(pTcpTableItem, pMailListener, packet, pTcpLinkKey, Seq, pPayLoad, pkthdr);
     }
     
 }
@@ -294,7 +382,7 @@ DMailListener *dmailListener_init(int tcpLinkTableSize, int emailInfoTableSize)
         return NULL;
     }
 
-    DHashTable *pEmailTable = dhashTable_init(emailInfoTableSize, NULL);
+    DHashTable *pEmailTable = dhashTable_init(emailInfoTableSize, dmailListener_hash_by_emailAddress);
     if(NULL == pEmailTable)
     {
         free(pMailListener);
