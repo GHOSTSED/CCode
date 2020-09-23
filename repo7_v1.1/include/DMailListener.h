@@ -36,7 +36,17 @@ typedef struct _DMailListener DMailListener;
 /*************************************************************************************************************************************/
 /*												   FUNCTIONS																		 */
 /*************************************************************************************************************************************/
-
+/*
+*@fn							    DMailListener *dmailListener_init(int tcpLinkTableSize, int emailInfoTableSize);
+*@brief   						    用于对邮件监听器进行初始化
+*@details	
+*
+*@param[in] int tcpLinkTableSize	用于指定邮件监听器维护的tcp连接的hash表大小
+*@param[in] int emailInfoTableSize  用于指定邮件监听器维护的存储监听到的所有邮件信息的hash表大小        
+*
+*@return						    一个只有头节点的链表指针，若申请空间失败，则返回NULL
+*@retval
+*/
 DMailListener *dmailListener_init(int tcpLinkTableSize, int emailInfoTableSize);
 
 void dmailListener_run(DMailListener *pMailListener ,const char *filePath);
