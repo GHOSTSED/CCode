@@ -75,38 +75,232 @@ typedef struct _DMailListener
 /*												   FUNCTIONS																		 */
 /*************************************************************************************************************************************/
 
+/*
+*@fn							    static void dmailListener_callback_print_sendListItem(const void *vSendListItem);
+*@brief   						    回调函数，用于打印发件人视角下的邮件信息
+*@details	
+*
+*@param[in] const void* vSendListItem	指向要打印的SendListItem对象的指针     
+*
+*@return						        N/A
+*@retval
+*/
 static void dmailListener_callback_print_sendListItem(const void *vSendListItem);
 
+/*
+*@fn							    static void dmailListener_callback_print_receiveListItem(const void *vReceiveListItem);
+*@brief   						    回调函数，用于打印收件人视角下的邮件信息
+*@details	
+*
+*@param[in] const void* vReceiveListItem	指向要打印的ReceiveListItem对象的指针     
+*
+*@return						            N/A
+*@retval
+*/
 static void dmailListener_callback_print_receiveListItem(const void *vReceiveListItem);
 
+/*
+*@fn							    static void dmailListener_callback_print_userInfo(const void *vEmailTableItem);
+*@brief   						    回调函数，用于打印用户信息（包括用户邮箱、发件列表、收件列表）
+*@details	
+*
+*@param[in] const void* vEmailTableItem	    指向要打印的vEmailTableItem对象的指针     
+*
+*@return						            N/A
+*@retval
+*/
 static void dmailListener_callback_print_userInfo(const void *vEmailTableItem);
 
+/*
+*@fn							    static EmailTableItem *dmailListener_EmailTableItem_init(unsigned char *emailAddr);
+*@brief   						    用于对EmailTableItem进行初始化操作
+*@details	
+*
+*@param[in] unsigned char* emailAddr	    要构建的用户的邮箱地址    
+*
+*@return						            若初始化成功，返回一个指向EmailTableItem对象的指针；否则，返回NULL
+*@retval
+*/
 static EmailTableItem *dmailListener_EmailTableItem_init(unsigned char *emailAddr);
 
+/*
+*@fn							    static void dmailListener_calback_EmailTableItem_delete(void *vEmailTableItem);
+*@brief   						    用于对EmailTableItem进行销毁操作，同时也作为销毁EmailTable时使用的回调函数而存在
+*@details	
+*
+*@param[in] void *vEmailTableItem	    指向要销毁的EmailTableItem对象的指针   
+*
+*@return						        N/A
+*@retval
+*/
 static void dmailListener_calback_EmailTableItem_delete(void *vEmailTableItem);
 
+/*
+*@fn							    static SendListItem *dmailListener_SendListItem_init(const EmailInfoValue *pEmailInfo);
+*@brief   						    用于对SendListItem对象进行初始化操作，从TCP连接采集到的信息构件对象
+*@details	
+*
+*@param[in] const EmailInfoValue* pEmailInfo	    根据pEmailInfo中的信息构建SendListItem   
+*
+*@return						                    若初始化成功，返回构建出的SendListItem对象的指针；否则，返回NULL
+*@retval
+*/
 static SendListItem *dmailListener_SendListItem_init(const EmailInfoValue *pEmailInfo);
 
+/*
+*@fn							    static ReceiveListItem *dmailListener_ReceiveListItem_init(const EmailInfoValue *pEmailInfo);
+*@brief   						    用于对ReceiveListItem对象进行初始化操作，从TCP连接采集到的信息构件对象
+*@details	
+*
+*@param[in] const EmailInfoValue* pEmailInfo	    根据pEmailInfo中的信息构建ReceiveListItem   
+*
+*@return						                    若初始化成功，返回构建出的ReceiveListItem对象的指针；否则，返回NULL
+*@retval
+*/
 static ReceiveListItem *dmailListener_ReceiveListItem_init(const EmailInfoValue *pEmailInfo);
 
-static unsigned int dmailListener_hash_by_TcpLinkKey(const void *vTcpLinkKey, size_t keySize);
+/*
+*@fn							    static unsigned int dmailListener_callback_hash_by_TcpLinkKey(const void *vTcpLinkKey, size_t keySize);
+*@brief   						    用于根据TCP四元组进行hash操作
+*@details	
+*
+*@param[in] const void* vTcpLinkKey	                进行哈希操作的四元组key
+*@param[in] size_t keySize                          key的大小，在此实现中该参数无意义
+*
+*@return						                    返回算出的hash值
+*@retval
+*/
+static unsigned int dmailListener_callback_hash_by_TcpLinkKey(const void *vTcpLinkKey, size_t keySize);
 
-static unsigned int dmailListener_hash_by_emailAddress(const void *vEmailAddress, size_t keySize);
+/*
+*@fn							    static unsigned int dmailListener_callback_hash_by_emailAddress(const void *vEmailAddress, size_t keySize);
+*@brief   						    用于根据邮箱地址进行hash操作
+*@details	
+*
+*@param[in] const void* vEmailAddress	                进行哈希操作的邮箱地址key
+*@param[in] size_t keySize                              key的大小，在此实现中该参数无意义
+*
+*@return						                        返回算出的hash值
+*@retval
+*/
+static unsigned int dmailListener_callback_hash_by_emailAddress(const void *vEmailAddress, size_t keySize);
 
-static int dmailListener_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *vTcpLinkKey);
+/*
+*@fn							    static int dmailListener_callback_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *vTcpLinkKey);
+*@brief   						    用于对两个四元组进行比较，寻找四元组与vTcpLinkKey匹配的TcpTableItem
+*@details	
+*
+*@param[in] const void* vTcpTableItem	                参加比较的TcpTableItem
+*@param[in] const void *vTcpLinkKey                     要寻找的TCP四元组
+*
+*@return						                        若vTcpTableItem中的四元组与vTcpLinkKey匹配，返回0；否则，返回非0值
+*@retval
+*/
+static int dmailListener_callback_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *vTcpLinkKey);
 
-static int dmailListener_compare_by_EmailAddress(const void *vEmailTableItem, const void *vEmailAddress);
+/*
+*@fn							    static int dmailListener_callback_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *vTcpLinkKey);
+*@brief   						    用于对两个邮箱地址进行比较，寻找邮箱地址与vEmailAddress一致的EmailTableItem
+*@details	
+*
+*@param[in] const void* vEmailTableItem	                参加比较的EmailTableItem
+*@param[in] const void* vEmailAddress                   要寻找的Email地址
+*
+*@return						                        若vEmailTableItem中的邮箱地址与vEmailAddress匹配，返回0；否则，返回非0值
+*@retval
+*/
+static int dmailListener_callback_compare_by_EmailAddress(const void *vEmailTableItem, const void *vEmailAddress);
 
+/*
+*@fn							    static TcpTableItem *dmailListener_TcpTableItem_init(const TcpLinkKey *pTcpLinkKey);
+*@brief   						    用于根据TcpLinkKey对TcpTableItem进行初始化
+*@details	
+*
+*@param[in] const TcpLinkKey* pTcpLinkKey	            用于初始化TcpTableItem的四元组
+*
+*@return						                        若初始化成功，返回指向TcpTableItem的指针；否则，返回NULL
+*@retval
+*/
 static TcpTableItem *dmailListener_TcpTableItem_init(const TcpLinkKey *pTcpLinkKey);
 
+/*
+*@fn							    static void dmailListener_SMTP_to_next_state(TcpTableItem *pTcpItem, DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, char *pPayLoad, const struct pcap_pkthdr *pkthdr);
+*@brief   						    用于控制STMP连接的状态转换
+*@details	
+*
+*@param[in] TcpTableItem *pTcpItem	            STMP报文四元组对应的TCP连接
+*@param[in] DMailListener *pMailListener        邮件监听器句柄
+*@param[in] const u_char *packet                指向抓取到的STMP报文的指针
+*@param[in] const TcpLinkKey *pTcpLinkKey       STMP报文对应的TCP四元组指针
+*@param[in] unsigned long int Seq               STMP报文的TCP序列号
+*@param[in] char *pPayLoad                      STMP报文的数据部分的起始指针
+*@param[in] const struct pcap_pkthdr *pkthdr    STMP报文的长度等相关参数的指针
+*
+*@return						                        N/A
+*@retval
+*/
 static void dmailListener_SMTP_to_next_state(TcpTableItem *pTcpItem, DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, char *pPayLoad, const struct pcap_pkthdr *pkthdr);
 
+/*
+*@fn							    static void dmailListener_SMTP_parse(DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, char *pPayLoad, const struct pcap_pkthdr *pkthdr);
+*@brief   						    用于解析STMP报文
+*@details	
+*
+*@param[in] DMailListener* pMailListener        邮件监听器句柄
+*@param[in] const u_char* packet                指向抓取到的STMP报文的指针
+*@param[in] const TcpLinkKey* pTcpLinkKey       STMP报文对应的TCP四元组指针
+*@param[in] unsigned long int Seq               STMP报文的TCP序列号
+*@param[in] char* pPayLoad                      STMP报文的数据部分的起始指针
+*@param[in] const struct pcap_pkthdr *pkthdr    STMP报文的长度等相关参数的指针
+*
+*@return						                        N/A
+*@retval
+*/
 static void dmailListener_SMTP_parse(DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, char *pPayLoad, const struct pcap_pkthdr *pkthdr);
 
+/*
+*@fn							    static void dmailListener_POP_insert_to_emailTable(DMailListener *pMailListener, TcpTableItem *pTcpItem);
+*@brief   						    用于将TCP连接中收集到的邮件信息插入到邮件统计表中
+*@details	
+*
+*@param[in] DMailListener* pMailListener        邮件监听器句柄
+*@param[in] TcpTableItem* pTcpItem              根据此中的邮件信息ReceiveListItem创建对象，并插入到邮件统计表中
+*
+*@return						                N/A
+*@retval
+*/
 static void dmailListener_POP_insert_to_emailTable(DMailListener *pMailListener, TcpTableItem *pTcpItem);
 
+/*
+*@fn							    static void dmailListener_POP_parse(DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, unsigned long int Ack, char *pPayLoad, const struct pcap_pkthdr *pkthdr);
+*@brief   						    用于解析POP报文
+*@details	
+*
+*@param[in] DMailListener* pMailListener        邮件监听器句柄
+*@param[in] const u_char* packet                指向抓取到的STMP报文的指针
+*@param[in] const TcpLinkKey* pTcpLinkKey       POP报文对应的TCP四元组指针
+*@param[in] unsigned long int Seq               POP报文的TCP序列号
+*@param[in] unsigned long int Ack               POP报文请求的下一个报文的TCP序号
+*@param[in] char* pPayLoad                      POP报文的数据部分的起始指针
+*@param[in] const struct pcap_pkthdr *pkthdr    POP报文的长度等相关参数的指针
+*
+*@return						                N/A
+*@retval
+*/
 static void dmailListener_POP_parse(DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, unsigned long int Ack, char *pPayLoad, const struct pcap_pkthdr *pkthdr);
 
+/*
+*@fn							    static void dmailListener_packet_parse(u_char *userarg, const struct pcap_pkthdr *pkthdr, const u_char *packet);
+*@brief   						    用于解析所有抓取到的报文，报文解析入口，各种具体协议的报文解析函数的聚合
+*@details	
+*
+*@param[in] u_char *userarg                     用户传入的参数
+*@param[in] const struct pcap_pkthdr *pkthdr    指向报文的长度等相关参数的指针
+*@param[in] const u_char* packet                指向抓取到的报文的指针
+*
+*@return						                N/A
+*@retval
+*/
 static void dmailListener_packet_parse(u_char *userarg, const struct pcap_pkthdr *pkthdr, const u_char *packet);
 
 
@@ -210,7 +404,7 @@ static ReceiveListItem *dmailListener_ReceiveListItem_init(const EmailInfoValue 
     return pReceiveListItem;
 }
 
-static unsigned int dmailListener_hash_by_TcpLinkKey(const void *vTcpLinkKey, size_t keySize)
+static unsigned int dmailListener_callback_hash_by_TcpLinkKey(const void *vTcpLinkKey, size_t keySize)
 {
     TcpLinkKey *pTcpLinkKey = (TcpLinkKey *)vTcpLinkKey;
     unsigned int hash = pTcpLinkKey->srcPort + pTcpLinkKey->dstPort;
@@ -236,7 +430,7 @@ static unsigned int dmailListener_hash_by_TcpLinkKey(const void *vTcpLinkKey, si
     return hash;
 }
 
-static unsigned int dmailListener_hash_by_emailAddress(const void *vEmailAddress, size_t keySize)
+static unsigned int dmailListener_callback_hash_by_emailAddress(const void *vEmailAddress, size_t keySize)
 {
     unsigned char *pEmailAddress = (unsigned char *)vEmailAddress;
     int addressLen = strlen((char *)pEmailAddress);
@@ -249,7 +443,7 @@ static unsigned int dmailListener_hash_by_emailAddress(const void *vEmailAddress
     return hash;
 }
 
-static int dmailListener_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *vTcpLinkKey)
+static int dmailListener_callback_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *vTcpLinkKey)
 {
     TcpTableItem *pTcpTableItem = (TcpTableItem *)vTcpTableItem;
     TcpLinkKey *pTcpLinkKey = (TcpLinkKey *)vTcpLinkKey;
@@ -267,7 +461,7 @@ static int dmailListener_compare_by_TcpLinkKey(const void *vTcpTableItem, const 
     }
 }
 
-static int dmailListener_compare_by_EmailAddress(const void *vEmailTableItem, const void *vEmailAddress)
+static int dmailListener_callback_compare_by_EmailAddress(const void *vEmailTableItem, const void *vEmailAddress)
 {
     EmailTableItem *pEmailTableItem = (EmailTableItem *)vEmailAddress;
     unsigned char *pEmailAddress = (unsigned char *)vEmailAddress;
@@ -305,7 +499,7 @@ static void dmailListener_SMTP_to_next_state(TcpTableItem *pTcpItem, DMailListen
         }
         else if (0 == strncmp(pPayLoad, "QUIT", strlen("QUIT")))
         {
-            dhashTable_delete_data(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), NULL, dmailListener_compare_by_TcpLinkKey);
+            dhashTable_delete_data(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), NULL, dmailListener_callback_compare_by_TcpLinkKey);
         }
         else
         {
@@ -320,7 +514,7 @@ static void dmailListener_SMTP_to_next_state(TcpTableItem *pTcpItem, DMailListen
         }
         else if (0 == strncmp(pPayLoad, "QUIT", strlen("QUIT")))
         {
-            dhashTable_delete_data(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), NULL, dmailListener_compare_by_TcpLinkKey);
+            dhashTable_delete_data(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), NULL, dmailListener_callback_compare_by_TcpLinkKey);
         }
         else
         {
@@ -335,7 +529,7 @@ static void dmailListener_SMTP_to_next_state(TcpTableItem *pTcpItem, DMailListen
         }
         else if (0 == strncmp(pPayLoad, "QUIT", strlen("QUIT")))
         {
-            dhashTable_delete_data(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), NULL, dmailListener_compare_by_TcpLinkKey);
+            dhashTable_delete_data(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), NULL, dmailListener_callback_compare_by_TcpLinkKey);
         }
         else
         {
@@ -361,7 +555,7 @@ static void dmailListener_SMTP_to_next_state(TcpTableItem *pTcpItem, DMailListen
                 return;
             }
 
-            EmailTableItem *pEmailTableItem = dhashTable_query_by_key(pMailListener->emailTable, pTcpItem->value.senderAddress, strlen((char *)pTcpItem->value.senderAddress), dmailListener_compare_by_EmailAddress);
+            EmailTableItem *pEmailTableItem = dhashTable_query_by_key(pMailListener->emailTable, pTcpItem->value.senderAddress, strlen((char *)pTcpItem->value.senderAddress), dmailListener_callback_compare_by_EmailAddress);
             if (NULL == pEmailTableItem)
             {
                 pEmailTableItem = dmailListener_EmailTableItem_init(pTcpItem->value.senderAddress);
@@ -390,7 +584,7 @@ static void dmailListener_SMTP_to_next_state(TcpTableItem *pTcpItem, DMailListen
 
 static void dmailListener_SMTP_parse(DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, char *pPayLoad, const struct pcap_pkthdr *pkthdr)
 {
-    TcpTableItem *pTcpTableItem = (TcpTableItem *)dhashTable_query_by_key(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), dmailListener_compare_by_TcpLinkKey);
+    TcpTableItem *pTcpTableItem = (TcpTableItem *)dhashTable_query_by_key(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), dmailListener_callback_compare_by_TcpLinkKey);
     if (NULL == pTcpTableItem)
     {
         if (0 == strncmp(pPayLoad, "EHLO", strlen("EHLO")))
@@ -420,7 +614,7 @@ static void dmailListener_POP_insert_to_emailTable(DMailListener *pMailListener,
         return;
     }
 
-    EmailTableItem *pEmailItem = dhashTable_query_by_key(pMailListener->emailTable, pTcpItem->value.receiverAddress, EMAIL_ADDRESS_MAX_LENGTH, dmailListener_compare_by_EmailAddress);
+    EmailTableItem *pEmailItem = dhashTable_query_by_key(pMailListener->emailTable, pTcpItem->value.receiverAddress, EMAIL_ADDRESS_MAX_LENGTH, dmailListener_callback_compare_by_EmailAddress);
     if (NULL == pEmailItem)
     {
         pEmailItem = dmailListener_EmailTableItem_init(pTcpItem->value.receiverAddress);
@@ -442,7 +636,7 @@ static void dmailListener_POP_insert_to_emailTable(DMailListener *pMailListener,
 
 static void dmailListener_POP_parse(DMailListener *pMailListener, const u_char *packet, const TcpLinkKey *pTcpLinkKey, unsigned long int Seq, unsigned long int Ack, char *pPayLoad, const struct pcap_pkthdr *pkthdr)
 {
-    TcpTableItem *pTcpTableItem = (TcpTableItem *)dhashTable_query_by_key(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), dmailListener_compare_by_TcpLinkKey);
+    TcpTableItem *pTcpTableItem = (TcpTableItem *)dhashTable_query_by_key(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), dmailListener_callback_compare_by_TcpLinkKey);
     if (NULL == pTcpTableItem)
     {
         if (110 == pTcpLinkKey->dstPort)
@@ -506,7 +700,7 @@ static void dmailListener_POP_parse(DMailListener *pMailListener, const u_char *
 
             dmailListener_POP_insert_to_emailTable(pMailListener, pTcpTableItem);
         end:
-            dhashTable_delete_data(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), NULL, dmailListener_compare_by_TcpLinkKey);
+            dhashTable_delete_data(pMailListener->tcpTable, pTcpLinkKey, sizeof(TcpLinkKey), NULL, dmailListener_callback_compare_by_TcpLinkKey);
         }
     }
 }
@@ -565,14 +759,14 @@ DMailListener *dmailListener_init(int tcpLinkTableSize, int emailInfoTableSize)
         return NULL;
     }
 
-    DHashTable *pEmailTable = dhashTable_init(emailInfoTableSize, dmailListener_hash_by_emailAddress, dmailListener_calback_EmailTableItem_delete);
+    DHashTable *pEmailTable = dhashTable_init(emailInfoTableSize, dmailListener_callback_hash_by_emailAddress, dmailListener_calback_EmailTableItem_delete);
     if (NULL == pEmailTable)
     {
         free(pMailListener);
         return NULL;
     }
 
-    DHashTable *pTcpTable = dhashTable_init(tcpLinkTableSize, dmailListener_hash_by_TcpLinkKey, NULL);
+    DHashTable *pTcpTable = dhashTable_init(tcpLinkTableSize, dmailListener_callback_hash_by_TcpLinkKey, NULL);
     if (NULL == pTcpTable)
     {
         free(pMailListener);
