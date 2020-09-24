@@ -376,6 +376,11 @@ static void dmailListener_calback_EmailTableItem_delete(void *vEmailTableItem)
 
 static SendListItem *dmailListener_SendListItem_init(const EmailInfoValue *pEmailInfo)
 {
+    if(NULL == pEmailInfo)
+    {
+        return NULL;
+    }
+
     SendListItem *pSendListItem = (SendListItem *)malloc(sizeof(SendListItem));
     if (NULL == pSendListItem)
     {
@@ -391,6 +396,11 @@ static SendListItem *dmailListener_SendListItem_init(const EmailInfoValue *pEmai
 
 static ReceiveListItem *dmailListener_ReceiveListItem_init(const EmailInfoValue *pEmailInfo)
 {
+    if(NULL == pEmailInfo)
+    {
+        return NULL;
+    }
+
     ReceiveListItem *pReceiveListItem = (ReceiveListItem *)malloc(sizeof(ReceiveListItem));
     if (NULL == pReceiveListItem)
     {
@@ -406,6 +416,11 @@ static ReceiveListItem *dmailListener_ReceiveListItem_init(const EmailInfoValue 
 
 static unsigned int dmailListener_callback_hash_by_TcpLinkKey(const void *vTcpLinkKey, size_t keySize)
 {
+    if(NULL == vTcpLinkKey)
+    {
+        return 0;
+    }
+
     TcpLinkKey *pTcpLinkKey = (TcpLinkKey *)vTcpLinkKey;
     unsigned int hash = pTcpLinkKey->srcPort + pTcpLinkKey->dstPort;
     int srcIpLen, dstIpLen, i;
@@ -432,6 +447,11 @@ static unsigned int dmailListener_callback_hash_by_TcpLinkKey(const void *vTcpLi
 
 static unsigned int dmailListener_callback_hash_by_emailAddress(const void *vEmailAddress, size_t keySize)
 {
+    if(NULL == vEmailAddress)
+    {
+        return 0;
+    }
+
     unsigned char *pEmailAddress = (unsigned char *)vEmailAddress;
     int addressLen = strlen((char *)pEmailAddress);
     int i;
@@ -445,6 +465,11 @@ static unsigned int dmailListener_callback_hash_by_emailAddress(const void *vEma
 
 static int dmailListener_callback_compare_by_TcpLinkKey(const void *vTcpTableItem, const void *vTcpLinkKey)
 {
+    if(NULL == vTcpLinkKey || NULL == vTcpTableItem)
+    {
+        return -1;
+    }
+
     TcpTableItem *pTcpTableItem = (TcpTableItem *)vTcpTableItem;
     TcpLinkKey *pTcpLinkKey = (TcpLinkKey *)vTcpLinkKey;
     if (0 == strcmp((char *)pTcpTableItem->key.dstIP, (char *)pTcpLinkKey->dstIP) && 0 == strcmp((char *)pTcpTableItem->key.srcIP, (char *)pTcpLinkKey->srcIP) && pTcpTableItem->key.dstPort == pTcpLinkKey->dstPort && pTcpTableItem->key.srcPort == pTcpLinkKey->srcPort)
@@ -463,7 +488,12 @@ static int dmailListener_callback_compare_by_TcpLinkKey(const void *vTcpTableIte
 
 static int dmailListener_callback_compare_by_EmailAddress(const void *vEmailTableItem, const void *vEmailAddress)
 {
-    EmailTableItem *pEmailTableItem = (EmailTableItem *)vEmailAddress;
+    if(NULL == vEmailAddress || NULL == vEmailTableItem)
+    {
+        return -1;
+    }
+
+    EmailTableItem *pEmailTableItem = (EmailTableItem *)vEmailTableItem;
     unsigned char *pEmailAddress = (unsigned char *)vEmailAddress;
 
     return strcmp((char *)pEmailTableItem->userAddress, (char *)pEmailAddress);
@@ -471,6 +501,11 @@ static int dmailListener_callback_compare_by_EmailAddress(const void *vEmailTabl
 
 static TcpTableItem *dmailListener_TcpTableItem_init(const TcpLinkKey *pTcpLinkKey)
 {
+    if(NULL == pTcpLinkKey)
+    {
+        return NULL;
+    }
+
     TcpTableItem *pItem = (TcpTableItem *)malloc(sizeof(TcpTableItem));
     if (NULL == pItem)
     {
