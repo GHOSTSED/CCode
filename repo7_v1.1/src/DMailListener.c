@@ -2,6 +2,7 @@
 /*												  INCLUDE_FILES																		 */
 /*************************************************************************************************************************************/
 #include "../include/DMailListener.h"
+#include <pthread.h>
 
 /*************************************************************************************************************************************/
 /*												     TYPES																		     */
@@ -68,6 +69,9 @@ typedef struct _DMailListener
                                    为该用户发送的所有邮件的信息列表sendList；其二为该用户所有收到的邮件的信
                                    息列表receiveList */
     DHashTable *tcpTable;       /* 用于存储所有与邮件服务器建立的TCP连接的hash表，key为 */
+
+    pthread_mutex_t emailTableLock;
+    pthread_mutex_t tcpTableLock;
 } DMailListener;
 
 
@@ -304,7 +308,45 @@ static void dmailListener_POP_parse(DMailListener *pMailListener, const u_char *
 static void dmailListener_packet_parse(u_char *userarg, const struct pcap_pkthdr *pkthdr, const u_char *packet);
 
 
+static void dmailListener_emailTable_lock(DMailListener *pMailListener)
+{
+    if(NULL == pMailListener)
+    {
+        return;
+    }
 
+    pthread_mutex_lock(&(pMailListener->emailTableLock));
+}
+
+static void dmailListener_emailTable_unlock(DMailListener *pMailListener)
+{
+    if(NULL == pMailListener)
+    {
+        return;
+    }
+
+    pthread_mutex_unlock(&(pMailListener->emailTableLock));
+}
+
+static void dmailListener_tcpTable_lock(DMailListener *pMailListener)
+{
+    if(NULL == pMailListener)
+    {
+        return;
+    }
+
+    pthread_mutex_lock(&(pMailListener->tcpTableLock));
+}
+
+static void dmailListener_tcpTable_unlock(DMailListener *pMailListener)
+{
+    if(NULL == pMailListener)
+    {
+        return;
+    }
+
+    pthread_mutex_unlock(&(pMailListener->tcpTableLock));
+}
 
 static void dmailListener_callback_print_sendListItem(const void *vSendListItem)
 {
@@ -742,6 +784,8 @@ static void dmailListener_POP_parse(DMailListener *pMailListener, const u_char *
 
 static void dmailListener_packet_parse(u_char *userarg, const struct pcap_pkthdr *pkthdr, const u_char *packet)
 {
+    pthread_testcancel();
+
     if (pkthdr->len <= 54)
     {
         return;
@@ -769,6 +813,8 @@ static void dmailListener_packet_parse(u_char *userarg, const struct pcap_pkthdr
 
     pPayload = (char *)(packet + sizeof(struct ether_header) + sizeof(struct iphdr) + sizeof(struct tcphdr)); //得到数据包里内容，不过一般为乱码。
 
+    dmailListener_tcpTable_lock(pMailListener);
+    dmailListener_emailTable_lock(pMailListener);
     if (25 == tcpLink.dstPort)
     {
         dmailListener_SMTP_parse(pMailListener, packet, &tcpLink, Seq, pPayload, pkthdr);
@@ -777,6 +823,8 @@ static void dmailListener_packet_parse(u_char *userarg, const struct pcap_pkthdr
     {
         dmailListener_POP_parse(pMailListener, packet, &tcpLink, Seq, Ack, pPayload, pkthdr);
     }
+    dmailListener_emailTable_unlock(pMailListener);
+    dmailListener_tcpTable_unlock(pMailListener);
 
     return;
 }
@@ -809,48 +857,137 @@ DMailListener *dmailListener_init(int tcpLinkTableSize, int emailInfoTableSize)
         return NULL;
     }
 
+    pthread_mutex_init(&(pMailListener->emailTableLock), NULL);
+    pthread_mutex_init(&(pMailListener->tcpTableLock), NULL);
     pMailListener->emailTable = pEmailTable;
     pMailListener->tcpTable = pTcpTable;
 
     return pMailListener;
 }
 
-void dmailListener_run(DMailListener *pMailListener, const char *filePath)
+typedef struct para
 {
-    /* 查找LAN口网卡并获取handle */
+    pcap_t *handle;
+    DMailListener *pMailListener;
+} para;
+
+
+static void *dmailListener_pcap_loop(void *vPara)
+{
+    para *pPara = (para *)vPara;
+    pcap_loop(pPara->handle, -1, dmailListener_packet_parse, (u_char *)(pPara->pMailListener));
+    return NULL;
+}
+
+void dmailListener_run(DMailListener *pMailListener, const char *filePath, int mode)
+{
+    if(NULL == pMailListener)
+    {
+        return;
+    }
+    
     pcap_t *handle;
     char errBuf[PCAP_ERRBUF_SIZE];
     struct bpf_program filter;
-    if(NULL != filePath)
+    char devTable[20][30];
+    int i;
+
+    if(MODE_OFFLINE == mode)
     {
         handle = pcap_open_offline(filePath, errBuf);
+        if(NULL == handle)
+        {
+            printf("open file failed!\n");
+            return;
+        }
+    }
+    else if(MODE_ONLINE == mode)
+    {
+        pcap_if_t *pDev;
+        int devIndex;
+        i = 1;
+        pcap_findalldevs(&pDev, errBuf);
+        printf("find these devices:\n");
+        while (NULL != pDev)
+        {
+            printf("%d. %s\n", i, pDev->name);
+            strncpy(devTable[i], pDev->name, 30);
+            i++;
+            pDev = pDev->next;
+        }
+        
+    enter_dev_index:
+        printf("\nplease enter a number to decide the interface you want to listen:\n");
+        scanf("%d", &devIndex);
+        if(devIndex >= i)
+        {
+            printf("illegal index!\n");
+            goto enter_dev_index;
+        }
+
+        handle = pcap_open_live(devTable[devIndex], 65535, 1, 1000, errBuf);
+        if(NULL == handle)
+        {
+            printf("listen device failed!\n");
+            return;
+        }
     }
     else
     {
-        
+        printf("illegal mode index!\n");
+        return;
     }
     
-    if (NULL != handle)
-    {
-        printf("open ok!\n");
-    }
-    else
-    {
-        printf("open failed!\n");
-    }
 
     char filter_app[] = "dst port 25 or src port 110 or dst port 110";
 
     pcap_compile(handle, &filter, filter_app, 0, 0);
     pcap_setfilter(handle, &filter);
 
-    pcap_loop(handle, -1, dmailListener_packet_parse, (u_char *)(pMailListener));
+    int tid;
+    para lPara;
+    lPara.pMailListener = pMailListener;
+    lPara.handle = handle;
+    int res = pthread_create((pthread_t *)&tid, NULL, dmailListener_pcap_loop, (void *)&lPara);
+
+    if(0 != res)
+    {
+        printf("creat loop thread failed!\n");
+        return;
+    }
+
+    char commend[20];
+    while (1)
+    {
+        printf(">");
+        scanf("%s", commend);
+        if(0 == strcmp(commend, "print"))
+        {
+            dmailListener_print_all_mailInfo(pMailListener);
+        }
+        else if(0 == strcmp(commend, "quit"))
+        {
+            pthread_cancel((pthread_t)&tid);
+            break;
+        }
+        
+    }
+    
+
+    // pcap_loop(handle, -1, dmailListener_packet_parse, (u_char *)(pMailListener));
     pcap_close(handle);
 }
 
 void dmailListener_print_all_mailInfo(DMailListener *pMailListener)
 {
+    if(NULL == pMailListener)
+    {
+        return;
+    }
+
+    dmailListener_emailTable_lock(pMailListener);
     dhashTable_print(pMailListener->emailTable, dmailListener_callback_print_userInfo);
+    dmailListener_emailTable_unlock(pMailListener);
 }
 
 int dmailListener_delete(DMailListener *pMailListener)
