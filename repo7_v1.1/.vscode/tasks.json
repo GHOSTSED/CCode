@@ -3,19 +3,19 @@
         {
             "type": "shell",
             "label": "C/C++: gcc build active file",
-            "command": "/usr/bin/gcc",
-            "args": [
-                "-g",
-                "${file}",
-                "-Wall",
-                "-Werror",
-                "${workspaceFolder}/src/DList.c",
-                "${workspaceFolder}/src/DHashTable.c",
-                "${workspaceFolder}/src/DMailListener.c",
-                "-o",
-                "${workspaceFolder}/exe/${fileBasenameNoExtension}",
-                "-lpcap"
-            ],
+            "command": "make",
+            // "args": [
+            //     "-g",
+            //     "${file}",
+            //     "-Wall",
+            //     "-Werror",
+            //     "${workspaceFolder}/src/DList.c",
+            //     "${workspaceFolder}/src/DHashTable.c",
+            //     "${workspaceFolder}/src/DMailListener.c",
+            //     "-o",
+            //     "${workspaceFolder}/exe/${fileBasenameNoExtension}",
+            //     "-lpcap"
+            // ],
             "options": {
                 // "cwd": "${workspaceFolder}"
             },

@@ -27,6 +27,8 @@
 #define TIME_MAX_LENGTH 50
 #define HASH_TABLE_SIZE 128
 #define BUFFER_MAX_LENGTH 256
+#define MODE_ONLINE 1
+#define MODE_OFFLINE 2
 
 /*************************************************************************************************************************************/
 /*												     TYPES																		     */
@@ -60,7 +62,7 @@ DMailListener *dmailListener_init(int tcpLinkTableSize, int emailInfoTableSize);
 *@return						            N/A
 *@retval
 */
-void dmailListener_run(DMailListener *pMailListener ,const char *filePath);
+void dmailListener_run(DMailListener *pMailListener ,const char *filePath, int mode);
 
 /*
 *@fn							            int dmailListener_delete(DMailListener *pMailListener);
