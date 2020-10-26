@@ -7,6 +7,7 @@
 // #include <sys/types.h>
 // #include <netinet/in.h>
 // #include <sys/socket.h>
+// #include <fcntl.h>
 // #include <sys/wait.h>
 // #include <unistd.h>
 // #include <arpa/inet.h>
@@ -66,6 +67,13 @@
 //         exit(-1);
 //     }
 
+//     int flags = fcntl (sockfd, F_GETFL); 
+//     if (flags & O_NONBLOCK)
+//     {
+//         //fcntl (sockfd, F_SETFL, flags-O_NONBLOCK);
+//         fcntl(sockfd,F_SETFL,flags&(~O_NONBLOCK));
+//     }
+
 //     ssl = SSL_new(sslCtx);
 //     if(NULL == ssl)
 //     {
@@ -73,9 +81,9 @@
 //         exit(-1);
 //     }
 
-//     SSL_set_fd(ssl, sockfd);
+//     int sslsetfd = SSL_set_fd(ssl, sockfd);
 
-//     SSL_connect(ssl);
+//     int sslconnect = SSL_connect(ssl);
 
 //     strcpy(buf, "114514\0");
 //     SSL_write(ssl, buf, MAX_BUF_SIZE);
