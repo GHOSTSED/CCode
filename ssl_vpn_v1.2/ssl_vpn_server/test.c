@@ -376,9 +376,9 @@ void accept_handle(int sockfd)
         int r = SSL_set_fd(pConnection->ssl_, new_fd);
         check0(!r, "SSL_set_fd failed!\n");
 
-        SSL_set_accept_state(pConnection->ssl_);
+        // SSL_set_accept_state(pConnection->ssl_);
 
-        r = SSL_do_handshake(pConnection->ssl_);
+        r = SSL_accept(pConnection->ssl_);
 
         int ret;
         int err = SSL_get_error(pConnection->ssl_, ret);
@@ -395,8 +395,8 @@ void accept_handle(int sockfd)
         else
         {
             log("ssl error!\n");
-            Connection_delete(pConnection);
-            return;
+            // Connection_delete(pConnection);
+            // return;
         }
 
         addEpollFd(g_conn_epollfd, pConnection);
@@ -475,7 +475,7 @@ void event_handle(int g_conn_epollfd, int waitms)
         if (SSLVPN_TRUE == pConn->isListenFd_ && (event & EPOLLIN))
         {
             //listenfd还有可能是端口映射
-            accept_handle(pConn);
+            accept_handle(pConn->fd_);
         }
         else if (event & EPOLLRDHUP)
         {
@@ -486,7 +486,7 @@ void event_handle(int g_conn_epollfd, int waitms)
         {
             if (SSLVPN_FALSE == pConn->sslConnected_)
             {
-                int r = SSL_do_handshake(pConn->ssl_);
+                int r = SSL_accept(pConn->ssl_);
 
                 int ret;
                 int err = SSL_get_error(pConn->ssl_, ret);
@@ -503,9 +503,9 @@ void event_handle(int g_conn_epollfd, int waitms)
                 else
                 {
                     log("ssl error!\n");
-                    epoll_ctl(g_conn_epollfd, EPOLL_CTL_DEL, pConn->fd_, &ee);
-                    Connection_delete(pConn);
-                    return;
+                    // epoll_ctl(g_conn_epollfd, EPOLL_CTL_DEL, pConn->fd_, &ee);
+                    // Connection_delete(pConn);
+                    // return;
                 }
             }
             else
